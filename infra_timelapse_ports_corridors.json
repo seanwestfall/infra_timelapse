@@ -1,0 +1,1560 @@
+{
+  "schema_version": "1.0.0",
+  "title": "Infra Timelapse ports, logistics nodes, corridors, and chokepoints",
+  "generated_at": "2026-08-02",
+  "source_issue": {
+    "repository": "seanwestfall/infra_timelapse",
+    "issue_number": 1,
+    "url": "https://github.com/seanwestfall/infra_timelapse/issues/1",
+    "purpose": "Initial monitoring universe defined in issue #1"
+  },
+  "crs": {
+    "name": "WGS 84",
+    "epsg": 4326,
+    "coordinate_order": "longitude, latitude"
+  },
+  "inventory_counts": {
+    "ports_and_logistics_nodes": 54,
+    "corridors": 19,
+    "chokepoints_and_route_overlays": 14,
+    "corridor_waypoints": 150
+  },
+  "notes": [
+    "Every coordinates array is [longitude, latitude]; gps objects repeat the same values as named fields.",
+    "Port and terminal coordinates identify the facility, port area, or proposed site, as indicated by coordinate_precision.",
+    "Corridor paths are schematic monitoring waypoints, not surveyed rail, road, shipping, or pipeline alignments.",
+    "Combined issue entries are split into individual assets so each monitored location has one GPS point.",
+    "Planned, proposed, delayed, and dual-use assets are retained because they are explicitly in issue #1."
+  ],
+  "sources": [
+    {
+      "id": "github_issue_1",
+      "name": "Infra Timelapse issue #1",
+      "url": "https://github.com/seanwestfall/infra_timelapse/issues/1",
+      "use": "Authoritative project inventory"
+    },
+    {
+      "id": "upply_seaports",
+      "name": "Upply Seaports Locations Data",
+      "url": "https://www.data.gouv.fr/datasets/seaports-locations-data",
+      "license": "CC BY",
+      "use": "Port-area coordinates"
+    },
+    {
+      "id": "openstreetmap",
+      "name": "OpenStreetMap contributors via Nominatim and Overpass",
+      "url": "https://www.openstreetmap.org/copyright",
+      "license": "ODbL",
+      "use": "Facility, terminal, station, and planned-site coordinates"
+    },
+    {
+      "id": "geonames",
+      "name": "GeoNames geographical database",
+      "url": "https://download.geonames.org/export/dump/",
+      "license": "CC BY 4.0",
+      "use": "Corridor city waypoint coordinates"
+    },
+    {
+      "id": "official_and_open_sources",
+      "name": "Official port publications and corroborating open sources",
+      "url": "https://www.aiddata.org/data/chinese-financed-ports-overseas-and-related-terminals-dataset-2-0",
+      "use": "Specialized facilities and proposed-site checks"
+    },
+    {
+      "id": "bri_framework",
+      "name": "Official Belt and Road framework",
+      "url": "https://eng.yidaiyilu.gov.cn/p/0KO9IB90.html",
+      "use": "Corridor naming and scope context"
+    }
+  ],
+  "ports_and_logistics_nodes": [
+    {
+      "id": "lianyungang_port",
+      "name": "Lianyungang Port",
+      "aliases": [],
+      "country_or_area": "China",
+      "iso_country_code": "CN",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Lianyungang Port",
+      "coordinates": [119.4333, 34.7167],
+      "gps": {"latitude": 34.7167, "longitude": 119.4333},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["new_eurasian_land_bridge"]
+    },
+    {
+      "id": "xian_international_port",
+      "name": "Xi’an International Port",
+      "aliases": ["Xi'an International Port Station"],
+      "country_or_area": "China",
+      "iso_country_code": "CN",
+      "asset_type": "rail_logistics_hub",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Xi’an International Port",
+      "coordinates": [109.0635583, 34.4122285],
+      "gps": {"latitude": 34.4122285, "longitude": 109.0635583},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["new_eurasian_land_bridge", "china_europe_railway_express", "trans_caspian_middle_corridor"]
+    },
+    {
+      "id": "khorgos_gateway_dry_port",
+      "name": "Khorgos Gateway Dry Port",
+      "aliases": ["Horgos dry port", "KTZE-Khorgos Gateway"],
+      "country_or_area": "Kazakhstan",
+      "iso_country_code": "KZ",
+      "asset_type": "dry_port",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Khorgos/Horgos dry port and Altynkol gateway",
+      "coordinates": [80.2440642, 44.1971118],
+      "gps": {"latitude": 44.1971118, "longitude": 80.2440642},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["new_eurasian_land_bridge", "china_central_asia_west_asia", "china_europe_railway_express", "trans_caspian_middle_corridor"]
+    },
+    {
+      "id": "altynkol_gateway",
+      "name": "Altynkol Gateway",
+      "aliases": ["Altynkol railway station"],
+      "country_or_area": "Kazakhstan",
+      "iso_country_code": "KZ",
+      "asset_type": "rail_border_gateway",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Khorgos/Horgos dry port and Altynkol gateway",
+      "coordinates": [80.2954156, 44.164907],
+      "gps": {"latitude": 44.164907, "longitude": 80.2954156},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["new_eurasian_land_bridge", "china_europe_railway_express"]
+    },
+    {
+      "id": "qinzhou_beibu_gulf_port",
+      "name": "Qinzhou Port / Beibu Gulf Port",
+      "aliases": ["Qinzhou Port Area"],
+      "country_or_area": "China",
+      "iso_country_code": "CN",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Qinzhou / Beibu Gulf Port",
+      "coordinates": [108.5968678, 21.74141],
+      "gps": {"latitude": 21.74141, "longitude": 108.5968678},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["new_international_land_sea", "maritime_silk_road"]
+    },
+    {
+      "id": "gwadar_port",
+      "name": "Gwadar Port",
+      "aliases": [],
+      "country_or_area": "Pakistan",
+      "iso_country_code": "PK",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational_expanding",
+      "issue_entry": "Gwadar Port",
+      "coordinates": [62.3394618, 25.1085929],
+      "gps": {"latitude": 25.1085929, "longitude": 62.3394618},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["cpec", "maritime_silk_road"]
+    },
+    {
+      "id": "karachi_port",
+      "name": "Karachi Port",
+      "aliases": ["Port of Karachi"],
+      "country_or_area": "Pakistan",
+      "iso_country_code": "PK",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Karachi Port / Port Qasim",
+      "coordinates": [66.98333333, 24.81666667],
+      "gps": {"latitude": 24.81666667, "longitude": 66.98333333},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["cpec", "maritime_silk_road"]
+    },
+    {
+      "id": "port_qasim",
+      "name": "Port Qasim",
+      "aliases": ["Port Muhammad Bin Qasim"],
+      "country_or_area": "Pakistan",
+      "iso_country_code": "PK",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Karachi Port / Port Qasim",
+      "coordinates": [67.3333, 24.7667],
+      "gps": {"latitude": 24.7667, "longitude": 67.3333},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["cpec", "maritime_silk_road"]
+    },
+    {
+      "id": "hambantota_international_port",
+      "name": "Hambantota International Port",
+      "aliases": ["Magampura Mahinda Rajapaksa Port"],
+      "country_or_area": "Sri Lanka",
+      "iso_country_code": "LK",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Hambantota International Port",
+      "coordinates": [81.1167, 6.1167],
+      "gps": {"latitude": 6.1167, "longitude": 81.1167},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "colombo_cict",
+      "name": "Colombo International Container Terminals",
+      "aliases": ["CICT", "Colombo Port / CICT"],
+      "country_or_area": "Sri Lanka",
+      "iso_country_code": "LK",
+      "asset_type": "container_terminal",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Colombo Port / CICT",
+      "coordinates": [79.832778, 6.945556],
+      "gps": {"latitude": 6.945556, "longitude": 79.832778},
+      "coordinate_precision": "facility_approximate",
+      "coordinate_source_ids": ["official_and_open_sources", "openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "kyaukphyu_deepwater_port",
+      "name": "Kyaukphyu Deepwater Port",
+      "aliases": ["Maday Island deep-sea port project"],
+      "country_or_area": "Myanmar",
+      "iso_country_code": "MM",
+      "asset_type": "planned_deepwater_port",
+      "monitoring_tier": "priority",
+      "project_status": "planned",
+      "issue_entry": "Kyaukphyu Deepwater Port",
+      "coordinates": [93.68444, 19.36444],
+      "gps": {"latitude": 19.36444, "longitude": 93.68444},
+      "coordinate_precision": "planned_site",
+      "coordinate_source_ids": ["official_and_open_sources"],
+      "linked_corridor_ids": ["china_myanmar", "maritime_silk_road"]
+    },
+    {
+      "id": "chattogram_port",
+      "name": "Port of Chattogram",
+      "aliases": ["Chittagong Port"],
+      "country_or_area": "Bangladesh",
+      "iso_country_code": "BD",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Chittagong/Chattogram Port and Mongla Port",
+      "coordinates": [91.8029144, 22.3109572],
+      "gps": {"latitude": 22.3109572, "longitude": 91.8029144},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["bcim", "maritime_silk_road"]
+    },
+    {
+      "id": "mongla_port",
+      "name": "Mongla Port",
+      "aliases": ["Port of Mongla"],
+      "country_or_area": "Bangladesh",
+      "iso_country_code": "BD",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Chittagong/Chattogram Port and Mongla Port",
+      "coordinates": [89.6016171, 22.4942196],
+      "gps": {"latitude": 22.4942196, "longitude": 89.6016171},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["bcim", "maritime_silk_road"]
+    },
+    {
+      "id": "port_of_piraeus",
+      "name": "Port of Piraeus",
+      "aliases": [],
+      "country_or_area": "Greece",
+      "iso_country_code": "GR",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Port of Piraeus",
+      "coordinates": [23.6167, 37.9333],
+      "gps": {"latitude": 37.9333, "longitude": 23.6167},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road", "piraeus_belgrade_budapest"]
+    },
+    {
+      "id": "duisburg_inland_port",
+      "name": "Duisburg Inland Port",
+      "aliases": ["duisport"],
+      "country_or_area": "Germany",
+      "iso_country_code": "DE",
+      "asset_type": "inland_port",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Duisburg inland port",
+      "coordinates": [6.75, 51.4667],
+      "gps": {"latitude": 51.4667, "longitude": 6.75},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["new_eurasian_land_bridge", "china_europe_railway_express"]
+    },
+    {
+      "id": "malaszewicze_logistics_hub",
+      "name": "Małaszewicze Logistics Hub",
+      "aliases": ["Małaszewicze transshipment area"],
+      "country_or_area": "Poland",
+      "iso_country_code": "PL",
+      "asset_type": "rail_logistics_hub",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Małaszewicze logistics hub",
+      "coordinates": [23.5310557, 52.0240425],
+      "gps": {"latitude": 52.0240425, "longitude": 23.5310557},
+      "coordinate_precision": "facility_approximate",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["new_eurasian_land_bridge", "china_europe_railway_express"]
+    },
+    {
+      "id": "doraleh_multipurpose_port",
+      "name": "Doraleh Multipurpose Port",
+      "aliases": ["DMP"],
+      "country_or_area": "Djibouti",
+      "iso_country_code": "DJ",
+      "asset_type": "multipurpose_port",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Doraleh Multipurpose Port",
+      "coordinates": [43.0694209, 11.5963443],
+      "gps": {"latitude": 11.5963443, "longitude": 43.0694209},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road", "addis_djibouti"]
+    },
+    {
+      "id": "damerjog_facilities",
+      "name": "Damerjog Port and Industrial Facilities",
+      "aliases": ["Damerjog industrial port project"],
+      "country_or_area": "Djibouti",
+      "iso_country_code": "DJ",
+      "asset_type": "port_industrial_complex",
+      "monitoring_tier": "priority",
+      "project_status": "under_development",
+      "issue_entry": "Damerjog facilities",
+      "coordinates": [43.1872, 11.4856],
+      "gps": {"latitude": 11.4856, "longitude": 43.1872},
+      "coordinate_precision": "planned_site",
+      "coordinate_source_ids": ["official_and_open_sources"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "pla_support_base_djibouti",
+      "name": "PLA Support Base, Djibouti",
+      "aliases": ["Chinese People's Liberation Army Support Base in Djibouti"],
+      "country_or_area": "Djibouti",
+      "iso_country_code": "DJ",
+      "asset_type": "military_logistics_base",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "PLA Support Base, Djibouti",
+      "coordinates": [43.0634, 11.5908],
+      "gps": {"latitude": 11.5908, "longitude": 43.0634},
+      "coordinate_precision": "facility_approximate",
+      "coordinate_source_ids": ["official_and_open_sources", "openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "khalifa_port",
+      "name": "Khalifa Port",
+      "aliases": [],
+      "country_or_area": "United Arab Emirates",
+      "iso_country_code": "AE",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Khalifa Port / CSP Abu Dhabi Terminal",
+      "coordinates": [54.653061, 24.8145215],
+      "gps": {"latitude": 24.8145215, "longitude": 54.653061},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "csp_abu_dhabi_terminal",
+      "name": "CSP Abu Dhabi Terminal",
+      "aliases": ["COSCO Shipping Ports Abu Dhabi Terminal"],
+      "country_or_area": "United Arab Emirates",
+      "iso_country_code": "AE",
+      "asset_type": "container_terminal",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Khalifa Port / CSP Abu Dhabi Terminal",
+      "coordinates": [54.6605781, 24.8184476],
+      "gps": {"latitude": 24.8184476, "longitude": 54.6605781},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_duqm",
+      "name": "Port of Duqm",
+      "aliases": [],
+      "country_or_area": "Oman",
+      "iso_country_code": "OM",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational_expanding",
+      "issue_entry": "Port of Duqm",
+      "coordinates": [57.7116611, 19.6629965],
+      "gps": {"latitude": 19.6629965, "longitude": 57.7116611},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "haifa_bayport_terminal",
+      "name": "Haifa Bayport Terminal",
+      "aliases": ["Bayport Terminal", "Haifa Port / Bayport Terminal"],
+      "country_or_area": "Israel",
+      "iso_country_code": "IL",
+      "asset_type": "container_terminal",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Haifa Port / Bayport Terminal",
+      "coordinates": [35.0311643, 32.8271369],
+      "gps": {"latitude": 32.8271369, "longitude": 35.0311643},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "kribi_deepwater_port",
+      "name": "Kribi Deepwater Port",
+      "aliases": ["Autonomous Port of Kribi"],
+      "country_or_area": "Cameroon",
+      "iso_country_code": "CM",
+      "asset_type": "deepwater_port",
+      "monitoring_tier": "priority",
+      "project_status": "operational_expanding",
+      "issue_entry": "Autonomous Port of Kribi",
+      "coordinates": [9.861257, 2.720365],
+      "gps": {"latitude": 2.720365, "longitude": 9.861257},
+      "coordinate_precision": "facility_approximate",
+      "coordinate_source_ids": ["official_and_open_sources", "openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "lekki_deep_sea_port",
+      "name": "Lekki Deep Sea Port",
+      "aliases": [],
+      "country_or_area": "Nigeria",
+      "iso_country_code": "NG",
+      "asset_type": "deepwater_port",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Lekki Deep Sea Port",
+      "coordinates": [4.0092461, 6.4279107],
+      "gps": {"latitude": 6.4279107, "longitude": 4.0092461},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_mombasa",
+      "name": "Port of Mombasa",
+      "aliases": ["Kilindini Harbour"],
+      "country_or_area": "Kenya",
+      "iso_country_code": "KE",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Port of Mombasa",
+      "coordinates": [39.64, -4.05],
+      "gps": {"latitude": -4.05, "longitude": 39.64},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road", "mombasa_nairobi_sgr"]
+    },
+    {
+      "id": "port_of_dar_es_salaam",
+      "name": "Port of Dar es Salaam",
+      "aliases": [],
+      "country_or_area": "Tanzania",
+      "iso_country_code": "TZ",
+      "asset_type": "seaport",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Port of Dar es Salaam",
+      "coordinates": [39.2833, -6.8],
+      "gps": {"latitude": -6.8, "longitude": 39.2833},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road", "tazara"]
+    },
+    {
+      "id": "port_of_chancay",
+      "name": "Port of Chancay",
+      "aliases": ["Chancay Megaport"],
+      "country_or_area": "Peru",
+      "iso_country_code": "PE",
+      "asset_type": "deepwater_port",
+      "monitoring_tier": "priority",
+      "project_status": "operational_expanding",
+      "issue_entry": "Port of Chancay",
+      "coordinates": [-77.2760411, -11.5922407],
+      "gps": {"latitude": -11.5922407, "longitude": -77.2760411},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["brazil_peru_bioceanic", "maritime_silk_road"]
+    },
+    {
+      "id": "tcp_paranagua",
+      "name": "Terminal de Contêineres de Paranaguá",
+      "aliases": ["TCP", "Paranaguá Container Terminal"],
+      "country_or_area": "Brazil",
+      "iso_country_code": "BR",
+      "asset_type": "container_terminal",
+      "monitoring_tier": "priority",
+      "project_status": "operational",
+      "issue_entry": "Terminal de Contêineres de Paranaguá (TCP)",
+      "coordinates": [-48.4989645, -25.5032472],
+      "gps": {"latitude": -25.5032472, "longitude": -48.4989645},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "porto_sul",
+      "name": "Porto Sul",
+      "aliases": ["South Port Bahia"],
+      "country_or_area": "Brazil",
+      "iso_country_code": "BR",
+      "asset_type": "planned_port",
+      "monitoring_tier": "priority",
+      "project_status": "planned_or_delayed",
+      "issue_entry": "Porto Sul",
+      "coordinates": [-39.0710984, -14.6752373],
+      "gps": {"latitude": -14.6752373, "longitude": -39.0710984},
+      "coordinate_precision": "planned_site",
+      "coordinate_source_ids": ["openstreetmap", "official_and_open_sources"],
+      "linked_corridor_ids": ["brazil_peru_bioceanic"]
+    },
+    {
+      "id": "autonomous_port_of_abidjan",
+      "name": "Autonomous Port of Abidjan",
+      "aliases": ["Port of Abidjan"],
+      "country_or_area": "Côte d’Ivoire",
+      "iso_country_code": "CI",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Autonomous Port of Abidjan",
+      "coordinates": [-4.0230635, 5.3042775],
+      "gps": {"latitude": 5.3042775, "longitude": -4.0230635},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_tema",
+      "name": "Port of Tema",
+      "aliases": ["Tema Port"],
+      "country_or_area": "Ghana",
+      "iso_country_code": "GH",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Tema",
+      "coordinates": [0.010285, 5.62967],
+      "gps": {"latitude": 5.62967, "longitude": 0.010285},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_bata",
+      "name": "Port of Bata",
+      "aliases": ["Bata Port"],
+      "country_or_area": "Equatorial Guinea",
+      "iso_country_code": "GQ",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Bata",
+      "coordinates": [9.73505, 1.82836],
+      "gps": {"latitude": 1.82836, "longitude": 9.73505},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["official_and_open_sources"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_caio",
+      "name": "Port of Caio",
+      "aliases": ["Caio Deepwater Port"],
+      "country_or_area": "Angola",
+      "iso_country_code": "AO",
+      "asset_type": "deepwater_port",
+      "monitoring_tier": "expanded",
+      "project_status": "under_development",
+      "issue_entry": "Port of Caio",
+      "coordinates": [12.2265722, -5.4784337],
+      "gps": {"latitude": -5.4784337, "longitude": 12.2265722},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "autonomous_port_of_nouakchott",
+      "name": "Autonomous Port of Nouakchott",
+      "aliases": ["Port de l’Amitié", "PANPA"],
+      "country_or_area": "Mauritania",
+      "iso_country_code": "MR",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Autonomous Port of Nouakchott",
+      "coordinates": [-16.0270292, 17.9949424],
+      "gps": {"latitude": 17.9949424, "longitude": -16.0270292},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "nouadhibou_fishing_port",
+      "name": "Nouadhibou Fishing Port",
+      "aliases": ["Port artisanal de Nouadhibou"],
+      "country_or_area": "Mauritania",
+      "iso_country_code": "MR",
+      "asset_type": "fishing_port",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Nouadhibou Fishing Port",
+      "coordinates": [-17.0362272, 20.9425179],
+      "gps": {"latitude": 20.9425179, "longitude": -17.0362272},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_boffa_dapilon",
+      "name": "Port of Boffa / Dapilon Port",
+      "aliases": ["Port of Dapilon"],
+      "country_or_area": "Guinea",
+      "iso_country_code": "GN",
+      "asset_type": "bulk_export_port",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Boffa",
+      "coordinates": [-14.497537, 10.8415947],
+      "gps": {"latitude": 10.8415947, "longitude": -14.497537},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap", "official_and_open_sources"],
+      "linked_corridor_ids": ["maritime_silk_road"],
+      "notes": "Issue wording uses Port of Boffa; the monitored operating facility is commonly mapped as Dapilon Port."
+    },
+    {
+      "id": "nacala_port",
+      "name": "Nacala Port",
+      "aliases": ["Port of Nacala"],
+      "country_or_area": "Mozambique",
+      "iso_country_code": "MZ",
+      "asset_type": "deepwater_port",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Nacala Port",
+      "coordinates": [40.6854309, -14.5656065],
+      "gps": {"latitude": -14.5656065, "longitude": 40.6854309},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "queen_elizabeth_ii_quay",
+      "name": "Queen Elizabeth II Quay",
+      "aliases": ["QEII Quay", "Port of Freetown"],
+      "country_or_area": "Sierra Leone",
+      "iso_country_code": "SL",
+      "asset_type": "seaport_terminal",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Queen Elizabeth II Quay",
+      "coordinates": [-13.2129291, 8.4920083],
+      "gps": {"latitude": 8.4920083, "longitude": -13.2129291},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_ashdod",
+      "name": "Port of Ashdod",
+      "aliases": ["Ashdod Port"],
+      "country_or_area": "Israel",
+      "iso_country_code": "IL",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Ashdod",
+      "coordinates": [34.6475703, 31.8287863],
+      "gps": {"latitude": 31.8287863, "longitude": 34.6475703},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_valencia",
+      "name": "Port of Valencia",
+      "aliases": ["Valenciaport"],
+      "country_or_area": "Spain",
+      "iso_country_code": "ES",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Valencia",
+      "coordinates": [-0.3, 39.45],
+      "gps": {"latitude": 39.45, "longitude": -0.3},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "laem_chabang_port",
+      "name": "Laem Chabang Port",
+      "aliases": [],
+      "country_or_area": "Thailand",
+      "iso_country_code": "TH",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational_expanding",
+      "issue_entry": "Laem Chabang Port",
+      "coordinates": [100.8994177, 13.0734119],
+      "gps": {"latitude": 13.0734119, "longitude": 100.8994177},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["china_indochina_peninsula", "china_laos_pan_asian", "maritime_silk_road"]
+    },
+    {
+      "id": "jurong_port_universal_terminal",
+      "name": "Jurong Port Universal Terminal",
+      "aliases": ["Universal Terminal"],
+      "country_or_area": "Singapore",
+      "iso_country_code": "SG",
+      "asset_type": "bulk_liquid_terminal",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Jurong Port Universal Terminal",
+      "coordinates": [103.6852267, 1.2382323],
+      "gps": {"latitude": 1.2382323, "longitude": 103.6852267},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_newcastle",
+      "name": "Port of Newcastle",
+      "aliases": [],
+      "country_or_area": "Australia",
+      "iso_country_code": "AU",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Newcastle",
+      "coordinates": [151.7891673, -32.9238464],
+      "gps": {"latitude": -32.9238464, "longitude": 151.7891673},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_melbourne",
+      "name": "Port of Melbourne",
+      "aliases": [],
+      "country_or_area": "Australia",
+      "iso_country_code": "AU",
+      "asset_type": "seaport",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Port of Melbourne",
+      "coordinates": [144.9241526, -37.8132566],
+      "gps": {"latitude": -37.8132566, "longitude": 144.9241526},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "wiggins_island_coal_export_terminal",
+      "name": "Wiggins Island Coal Export Terminal",
+      "aliases": ["WICET"],
+      "country_or_area": "Australia",
+      "iso_country_code": "AU",
+      "asset_type": "coal_export_terminal",
+      "monitoring_tier": "expanded",
+      "project_status": "operational",
+      "issue_entry": "Wiggins Island Coal Export Terminal",
+      "coordinates": [151.2090165, -23.8291287],
+      "gps": {"latitude": -23.8291287, "longitude": 151.2090165},
+      "coordinate_precision": "facility_area",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "el_hamdania_deepwater_port",
+      "name": "El Hamdania Deepwater Port",
+      "aliases": ["Hamdania Port", "Cherchell port project"],
+      "country_or_area": "Algeria",
+      "iso_country_code": "DZ",
+      "asset_type": "proposed_deepwater_port",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "delayed_or_reconfigured",
+      "issue_entry": "Hamdania/El Hamdania Deepwater Port",
+      "coordinates": [2.2591881, 36.6208055],
+      "gps": {"latitude": 36.6208055, "longitude": 2.2591881},
+      "coordinate_precision": "planned_site",
+      "coordinate_source_ids": ["openstreetmap", "official_and_open_sources"],
+      "linked_corridor_ids": ["maritime_silk_road"],
+      "notes": "Original proposed El Hamdania/Cherchell site; project configuration and status should be rechecked before time-series activation."
+    },
+    {
+      "id": "kisumu_port",
+      "name": "Kisumu Port",
+      "aliases": [],
+      "country_or_area": "Kenya",
+      "iso_country_code": "KE",
+      "asset_type": "lake_port",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "operational_rehabilitated",
+      "issue_entry": "Kisumu Port",
+      "coordinates": [34.7461683, -0.1021244],
+      "gps": {"latitude": -0.1021244, "longitude": 34.7461683},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["mombasa_nairobi_sgr"]
+    },
+    {
+      "id": "san_juan_de_marcona_port",
+      "name": "San Juan de Marcona Port",
+      "aliases": ["Port of San Juan", "Marcona port project"],
+      "country_or_area": "Peru",
+      "iso_country_code": "PE",
+      "asset_type": "proposed_deepwater_port",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "proposed",
+      "issue_entry": "San Juan de Marcona Port",
+      "coordinates": [-75.1597, -15.3523],
+      "gps": {"latitude": -15.3523, "longitude": -75.1597},
+      "coordinate_precision": "planned_site",
+      "coordinate_source_ids": ["official_and_open_sources"],
+      "linked_corridor_ids": ["brazil_peru_bioceanic"],
+      "notes": "Representative project-area point; verify the final terminal footprint if construction begins."
+    },
+    {
+      "id": "san_lorenzo_port_honduras",
+      "name": "Port of San Lorenzo, Honduras",
+      "aliases": ["Puerto Henecán"],
+      "country_or_area": "Honduras",
+      "iso_country_code": "HN",
+      "asset_type": "seaport",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "operational_with_proposals",
+      "issue_entry": "San Lorenzo Port, Honduras",
+      "coordinates": [-87.4554432, 13.4326204],
+      "gps": {"latitude": 13.4326204, "longitude": -87.4554432},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "puerto_sandino",
+      "name": "Puerto Sandino",
+      "aliases": ["Port of Sandino"],
+      "country_or_area": "Nicaragua",
+      "iso_country_code": "NI",
+      "asset_type": "seaport",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "operational_with_proposals",
+      "issue_entry": "Port of Sandino",
+      "coordinates": [-86.7628564, 12.1995007],
+      "gps": {"latitude": 12.1995007, "longitude": -86.7628564},
+      "coordinate_precision": "facility_approximate",
+      "coordinate_source_ids": ["openstreetmap"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "mubarak_al_kabeer_port",
+      "name": "Mubarak Al-Kabeer Port",
+      "aliases": ["Mubarak Al-Kabir Port"],
+      "country_or_area": "Kuwait",
+      "iso_country_code": "KW",
+      "asset_type": "planned_seaport",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "under_development_or_delayed",
+      "issue_entry": "Mubarak Al-Kabeer Port",
+      "coordinates": [48.3200634, 29.8638608],
+      "gps": {"latitude": 29.8638608, "longitude": 48.3200634},
+      "coordinate_precision": "planned_site",
+      "coordinate_source_ids": ["openstreetmap", "official_and_open_sources"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "port_of_lobito",
+      "name": "Port of Lobito",
+      "aliases": ["Lobito Port"],
+      "country_or_area": "Angola",
+      "iso_country_code": "AO",
+      "asset_type": "seaport",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "operational_expanding",
+      "issue_entry": "Lobito Port",
+      "coordinates": [13.5610451, -12.3757287],
+      "gps": {"latitude": -12.3757287, "longitude": 13.5610451},
+      "coordinate_precision": "port_area",
+      "coordinate_source_ids": ["upply_seaports"],
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "ream_naval_base",
+      "name": "Ream Naval Base / Joint Logistics and Training Centre",
+      "aliases": ["Ream Naval Base"],
+      "country_or_area": "Cambodia",
+      "iso_country_code": "KH",
+      "asset_type": "naval_logistics_facility",
+      "monitoring_tier": "pipeline_or_proposed",
+      "project_status": "operational_or_under_development",
+      "issue_entry": "Ream Naval Base / Joint Logistics and Training Centre",
+      "coordinates": [103.6132668, 10.5057505],
+      "gps": {"latitude": 10.5057505, "longitude": 103.6132668},
+      "coordinate_precision": "facility_exact",
+      "coordinate_source_ids": ["openstreetmap", "official_and_open_sources"],
+      "linked_corridor_ids": ["china_indochina_peninsula", "maritime_silk_road"]
+    }
+  ],
+  "corridors": [
+    {
+      "id": "new_eurasian_land_bridge",
+      "issue_order": 1,
+      "name": "New Eurasian Land Bridge Economic Corridor",
+      "route_type": ["rail", "intermodal"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "representative main line",
+          "waypoints": [
+            {"name": "Lianyungang Port", "node_id": "lianyungang_port", "coordinates": [119.4333, 34.7167]},
+            {"name": "Xi’an International Port", "node_id": "xian_international_port", "coordinates": [109.0635583, 34.4122285]},
+            {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
+            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"name": "Astana", "coordinates": [71.44598, 51.1801]},
+            {"name": "Yekaterinburg", "coordinates": [60.61529, 56.85733]},
+            {"name": "Moscow", "coordinates": [37.61781, 55.75204]},
+            {"name": "Brest", "coordinates": [23.71749, 52.10894]},
+            {"name": "Małaszewicze", "node_id": "malaszewicze_logistics_hub", "coordinates": [23.5310557, 52.0240425]},
+            {"name": "Duisburg", "node_id": "duisburg_inland_port", "coordinates": [6.75, 51.4667]},
+            {"name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
+          ]
+        }
+      ],
+      "notes": "Representative trans-Eurasian rail spine; individual services may use alternative Russian, Belarusian, Polish, or Central European routings."
+    },
+    {
+      "id": "china_mongolia_russia",
+      "issue_order": 2,
+      "name": "China–Mongolia–Russia Economic Corridor",
+      "route_type": ["rail", "road", "economic_corridor"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "representative rail spine",
+          "waypoints": [
+            {"name": "Tianjin", "coordinates": [117.17667, 39.14222]},
+            {"name": "Beijing", "coordinates": [116.39723, 39.9075]},
+            {"name": "Erenhot", "coordinates": [111.97667, 43.6475]},
+            {"name": "Ulaanbaatar", "coordinates": [106.88324, 47.90771]},
+            {"name": "Ulan-Ude", "coordinates": [107.59979, 51.82648]},
+            {"name": "Moscow", "coordinates": [37.61781, 55.75204]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "china_central_asia_west_asia",
+      "issue_order": 3,
+      "name": "China–Central Asia–West Asia Economic Corridor",
+      "route_type": ["rail", "road", "energy", "intermodal"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "westbound main line",
+          "waypoints": [
+            {"name": "Ürümqi", "coordinates": [87.60046, 43.80096]},
+            {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
+            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"name": "Bishkek", "coordinates": [74.59, 42.87]},
+            {"name": "Tashkent", "coordinates": [69.21627, 41.26465]},
+            {"name": "Ashgabat", "coordinates": [58.38333, 37.95]},
+            {"name": "Tehran", "coordinates": [51.42151, 35.69439]},
+            {"name": "Ankara", "coordinates": [32.85427, 39.91987]},
+            {"name": "Istanbul", "coordinates": [28.94966, 41.01384]}
+          ]
+        },
+        {
+          "name": "Persian Gulf branch",
+          "waypoints": [
+            {"name": "Tehran", "coordinates": [51.42151, 35.69439]},
+            {"name": "Bandar Abbas", "coordinates": [56.2808, 27.1865]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "china_indochina_peninsula",
+      "issue_order": 4,
+      "name": "China–Indochina Peninsula Economic Corridor",
+      "route_type": ["rail", "road", "economic_corridor"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "Kunming–Singapore spine",
+          "waypoints": [
+            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"name": "Mohan", "coordinates": [101.678, 21.193]},
+            {"name": "Boten", "coordinates": [101.67, 21.184]},
+            {"name": "Vientiane", "coordinates": [102.6, 17.96667]},
+            {"name": "Bangkok", "coordinates": [100.50144, 13.75398]},
+            {"name": "Kuala Lumpur", "coordinates": [101.68653, 3.1412]},
+            {"name": "Singapore", "coordinates": [103.85007, 1.28967]}
+          ]
+        },
+        {
+          "name": "Vietnam–Cambodia branch",
+          "waypoints": [
+            {"name": "Nanning", "coordinates": [108.31667, 22.81667]},
+            {"name": "Hanoi", "coordinates": [105.84117, 21.0245]},
+            {"name": "Ho Chi Minh City", "coordinates": [106.62965, 10.82302]},
+            {"name": "Phnom Penh", "coordinates": [104.91601, 11.56245]},
+            {"name": "Bangkok", "coordinates": [100.50144, 13.75398]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cpec",
+      "issue_order": 5,
+      "name": "China–Pakistan Economic Corridor (CPEC)",
+      "route_type": ["road", "rail", "energy", "port"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "eastern and central connection",
+          "waypoints": [
+            {"name": "Kashgar", "coordinates": [75.98675, 39.46718]},
+            {"name": "Khunjerab Pass", "coordinates": [75.4306, 36.8497]},
+            {"name": "Islamabad", "coordinates": [73.04329, 33.72148]},
+            {"name": "Lahore", "coordinates": [74.35071, 31.558]},
+            {"name": "Karachi Port", "node_id": "karachi_port", "coordinates": [66.98333333, 24.81666667]},
+            {"name": "Port Qasim", "node_id": "port_qasim", "coordinates": [67.3333, 24.7667]}
+          ]
+        },
+        {
+          "name": "western connection to Gwadar",
+          "waypoints": [
+            {"name": "Islamabad", "coordinates": [73.04329, 33.72148]},
+            {"name": "Quetta", "coordinates": [67.00141, 30.18414]},
+            {"name": "Gwadar Port", "node_id": "gwadar_port", "coordinates": [62.3394618, 25.1085929]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bcim",
+      "issue_order": 6,
+      "name": "Bangladesh–China–India–Myanmar Economic Corridor (BCIM)",
+      "route_type": ["road", "rail", "economic_corridor"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "K2K representative route",
+          "waypoints": [
+            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"name": "Ruili", "coordinates": [97.86499, 24.00139]},
+            {"name": "Muse", "coordinates": [97.904, 23.986]},
+            {"name": "Mandalay", "coordinates": [96.08359, 21.97473]},
+            {"name": "Dhaka", "coordinates": [90.40744, 23.7104]},
+            {"name": "Kolkata", "coordinates": [88.36304, 22.56263]}
+          ]
+        }
+      ],
+      "notes": "Retained exactly as an issue #1 monitoring corridor; implementation status and diplomatic framing may differ from other BRI corridors."
+    },
+    {
+      "id": "maritime_silk_road",
+      "issue_order": 7,
+      "name": "21st-Century Maritime Silk Road",
+      "route_type": ["maritime", "port_network"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "Indian Ocean–Mediterranean representative route",
+          "waypoints": [
+            {"name": "Shanghai", "coordinates": [121.45806, 31.22222]},
+            {"name": "Shenzhen", "coordinates": [114.0683, 22.54554]},
+            {"name": "Singapore", "coordinates": [103.85007, 1.28967]},
+            {"name": "Colombo CICT", "node_id": "colombo_cict", "coordinates": [79.832778, 6.945556]},
+            {"name": "Doraleh Multipurpose Port", "node_id": "doraleh_multipurpose_port", "coordinates": [43.0694209, 11.5963443]},
+            {"name": "Suez", "coordinates": [32.52627, 29.97371]},
+            {"name": "Port of Piraeus", "node_id": "port_of_piraeus", "coordinates": [23.6167, 37.9333]},
+            {"name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
+          ]
+        },
+        {
+          "name": "South Pacific representative branch",
+          "waypoints": [
+            {"name": "Shenzhen", "coordinates": [114.0683, 22.54554]},
+            {"name": "Port Moresby", "coordinates": [147.15089, -9.47723]},
+            {"name": "Suva", "coordinates": [178.42531, -18.13683]}
+          ]
+        }
+      ],
+      "notes": "A monitoring network rather than one fixed shipping lane; the route shown is representative only."
+    },
+    {
+      "id": "china_europe_railway_express",
+      "issue_order": 8,
+      "name": "China–Europe Railway Express",
+      "route_type": ["rail", "intermodal_service_network"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "representative central service",
+          "waypoints": [
+            {"name": "Xi’an International Port", "node_id": "xian_international_port", "coordinates": [109.0635583, 34.4122285]},
+            {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
+            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"name": "Astana", "coordinates": [71.44598, 51.1801]},
+            {"name": "Moscow", "coordinates": [37.61781, 55.75204]},
+            {"name": "Brest", "coordinates": [23.71749, 52.10894]},
+            {"name": "Małaszewicze", "node_id": "malaszewicze_logistics_hub", "coordinates": [23.5310557, 52.0240425]},
+            {"name": "Duisburg", "node_id": "duisburg_inland_port", "coordinates": [6.75, 51.4667]}
+          ]
+        }
+      ],
+      "notes": "Represents a network of branded freight services, not a single invariant line."
+    },
+    {
+      "id": "trans_caspian_middle_corridor",
+      "issue_order": 9,
+      "name": "Trans-Caspian International Transport Route / Middle Corridor",
+      "route_type": ["rail", "ferry", "intermodal"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "representative route",
+          "waypoints": [
+            {"name": "Xi’an International Port", "node_id": "xian_international_port", "coordinates": [109.0635583, 34.4122285]},
+            {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
+            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"name": "Aktau", "coordinates": [51.17392, 43.66105]},
+            {"name": "Baku", "coordinates": [49.89201, 40.37767]},
+            {"name": "Tbilisi", "coordinates": [44.83412, 41.69143]},
+            {"name": "Kars", "coordinates": [43.08548, 40.59825]},
+            {"name": "Istanbul", "coordinates": [28.94966, 41.01384]},
+            {"name": "Constanța", "coordinates": [28.63432, 44.18073]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "new_international_land_sea",
+      "issue_order": 10,
+      "name": "New International Land-Sea Trade Corridor",
+      "route_type": ["rail", "road", "maritime", "intermodal"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "western China to Beibu Gulf",
+          "waypoints": [
+            {"name": "Chongqing", "coordinates": [106.55771, 29.56026]},
+            {"name": "Guiyang", "coordinates": [106.71667, 26.58333]},
+            {"name": "Nanning", "coordinates": [108.31667, 22.81667]},
+            {"name": "Qinzhou / Beibu Gulf Port", "node_id": "qinzhou_beibu_gulf_port", "coordinates": [108.5968678, 21.74141]},
+            {"name": "Singapore", "coordinates": [103.85007, 1.28967]}
+          ]
+        },
+        {
+          "name": "Chengdu feeder",
+          "waypoints": [
+            {"name": "Chengdu", "coordinates": [104.06667, 30.66667]},
+            {"name": "Chongqing", "coordinates": [106.55771, 29.56026]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "china_laos_pan_asian",
+      "issue_order": 11,
+      "name": "China–Laos Railway / Pan-Asian Railway spine",
+      "route_type": ["rail"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "Kunming–Singapore spine",
+          "waypoints": [
+            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"name": "Mohan", "coordinates": [101.678, 21.193]},
+            {"name": "Boten", "coordinates": [101.67, 21.184]},
+            {"name": "Luang Prabang", "coordinates": [102.1525, 19.8933]},
+            {"name": "Vientiane", "coordinates": [102.6, 17.96667]},
+            {"name": "Nong Khai", "coordinates": [102.742, 17.87847]},
+            {"name": "Bangkok", "coordinates": [100.50144, 13.75398]},
+            {"name": "Padang Besar", "coordinates": [100.3, 6.38333]},
+            {"name": "Kuala Lumpur", "coordinates": [101.68653, 3.1412]},
+            {"name": "Singapore", "coordinates": [103.85007, 1.28967]}
+          ]
+        }
+      ],
+      "notes": "Operational and planned sections are shown together as a monitoring spine."
+    },
+    {
+      "id": "cku_railway",
+      "issue_order": 12,
+      "name": "China–Kyrgyzstan–Uzbekistan Railway",
+      "route_type": ["rail"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "planned CKU route",
+          "waypoints": [
+            {"name": "Kashgar", "coordinates": [75.98675, 39.46718]},
+            {"name": "Torugart Pass", "coordinates": [75.3789, 40.5528]},
+            {"name": "Naryn", "coordinates": [75.9957, 41.4283]},
+            {"name": "Jalal-Abad", "coordinates": [72.99313, 40.94498]},
+            {"name": "Andijan", "coordinates": [72.35067, 40.78338]}
+          ]
+        }
+      ],
+      "notes": "Schematic planned alignment; use project engineering data when available for construction monitoring."
+    },
+    {
+      "id": "china_myanmar",
+      "issue_order": 13,
+      "name": "China–Myanmar Economic Corridor",
+      "route_type": ["road", "rail", "pipeline", "port"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "Kunming–Kyaukphyu spine",
+          "waypoints": [
+            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"name": "Ruili", "coordinates": [97.86499, 24.00139]},
+            {"name": "Muse", "coordinates": [97.904, 23.986]},
+            {"name": "Mandalay", "coordinates": [96.08359, 21.97473]},
+            {"name": "Kyaukphyu Deepwater Port", "node_id": "kyaukphyu_deepwater_port", "coordinates": [93.68444, 19.36444]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "piraeus_belgrade_budapest",
+      "issue_order": 14,
+      "name": "Piraeus–Belgrade–Budapest logistics corridor",
+      "route_type": ["rail", "logistics"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "representative northbound line",
+          "waypoints": [
+            {"name": "Port of Piraeus", "node_id": "port_of_piraeus", "coordinates": [23.6167, 37.9333]},
+            {"name": "Thessaloniki", "coordinates": [22.93493, 40.64072]},
+            {"name": "Skopje", "coordinates": [21.43141, 41.99646]},
+            {"name": "Belgrade", "coordinates": [20.46513, 44.80401]},
+            {"name": "Budapest", "coordinates": [19.04045, 47.49835]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "addis_djibouti",
+      "issue_order": 15,
+      "name": "Addis Ababa–Djibouti Railway",
+      "route_type": ["rail"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "railway",
+          "waypoints": [
+            {"name": "Addis Ababa", "coordinates": [38.74689, 9.02497]},
+            {"name": "Adama", "coordinates": [39.26667, 8.55]},
+            {"name": "Dire Dawa", "coordinates": [41.86611, 9.59306]},
+            {"name": "Doraleh Multipurpose Port", "node_id": "doraleh_multipurpose_port", "coordinates": [43.0694209, 11.5963443]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mombasa_nairobi_sgr",
+      "issue_order": 16,
+      "name": "Mombasa–Nairobi SGR / Northern Corridor",
+      "route_type": ["rail", "road", "logistics"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "SGR representative line",
+          "waypoints": [
+            {"name": "Port of Mombasa", "node_id": "port_of_mombasa", "coordinates": [39.64, -4.05]},
+            {"name": "Voi", "coordinates": [38.55609, -3.39605]},
+            {"name": "Nairobi", "coordinates": [36.81667, -1.28333]},
+            {"name": "Naivasha", "coordinates": [36.43261, -0.71383]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tazara",
+      "issue_order": 17,
+      "name": "TAZARA / Dar es Salaam–Zambia Copperbelt",
+      "route_type": ["rail", "freight"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "TAZARA to Copperbelt",
+          "waypoints": [
+            {"name": "Port of Dar es Salaam", "node_id": "port_of_dar_es_salaam", "coordinates": [39.2833, -6.8]},
+            {"name": "Morogoro", "coordinates": [37.66122, -6.82102]},
+            {"name": "Mbeya", "coordinates": [33.45, -8.9]},
+            {"name": "Tunduma", "coordinates": [32.76667, -9.3]},
+            {"name": "Nakonde", "coordinates": [32.745, -9.34213]},
+            {"name": "Kapiri Mposhi", "coordinates": [28.66985, -13.97147]},
+            {"name": "Ndola", "coordinates": [28.63659, -12.95867]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "brazil_peru_bioceanic",
+      "issue_order": 18,
+      "name": "Brazil–Peru Bioceanic Corridor",
+      "route_type": ["road", "rail_proposal", "port"],
+      "geometry_precision": "high_level_conceptual_waypoints",
+      "route_segments": [
+        {
+          "name": "representative east–west concept",
+          "waypoints": [
+            {"name": "Porto Sul", "node_id": "porto_sul", "coordinates": [-39.0710984, -14.6752373]},
+            {"name": "Caetité", "coordinates": [-42.475, -14.06944]},
+            {"name": "Figueirópolis", "coordinates": [-49.1742, -12.1317]},
+            {"name": "Brasília", "coordinates": [-47.92972, -15.77972]},
+            {"name": "Porto Velho", "coordinates": [-63.90389, -8.76194]},
+            {"name": "Rio Branco", "coordinates": [-67.81, -9.97472]},
+            {"name": "Pucallpa", "coordinates": [-74.55387, -8.37915]},
+            {"name": "Port of Chancay", "node_id": "port_of_chancay", "coordinates": [-77.2760411, -11.5922407]}
+          ]
+        }
+      ],
+      "notes": "Conceptual monitoring connection only; there are competing proposals and no single settled end-to-end alignment."
+    },
+    {
+      "id": "polar_silk_road_nsr",
+      "issue_order": 19,
+      "name": "Polar Silk Road / Northern Sea Route",
+      "route_type": ["maritime", "seasonal_arctic_route"],
+      "geometry_precision": "schematic_monitoring_waypoints",
+      "route_segments": [
+        {
+          "name": "Asia to date line",
+          "waypoints": [
+            {"name": "Dalian", "coordinates": [121.60222, 38.91222]},
+            {"name": "Sea of Japan approach", "coordinates": [140.0, 42.0]},
+            {"name": "North Pacific approach", "coordinates": [160.0, 50.0]},
+            {"name": "Date line east side", "coordinates": [179.8, 65.8]}
+          ]
+        },
+        {
+          "name": "Bering Strait date-line crossing",
+          "waypoints": [
+            {"name": "Date line west side", "coordinates": [-179.8, 65.8]},
+            {"name": "Bering Strait", "coordinates": [-169.0, 65.9]},
+            {"name": "Arctic date line west side", "coordinates": [-179.8, 67.0]}
+          ]
+        },
+        {
+          "name": "Russian Arctic to Europe",
+          "waypoints": [
+            {"name": "Arctic date line east side", "coordinates": [179.8, 67.0]},
+            {"name": "Pevek", "coordinates": [170.3133, 69.7008]},
+            {"name": "Sabetta", "coordinates": [72.072, 71.273]},
+            {"name": "Murmansk", "coordinates": [33.09922, 68.96778]},
+            {"name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
+          ]
+        }
+      ],
+      "notes": "Split at the international date line for map-safe rendering. Actual tracks vary with ice, season, regulation, and vessel class."
+    }
+  ],
+  "chokepoints_and_route_overlays": [
+    {
+      "id": "strait_of_malacca",
+      "issue_entry": "Strait of Malacca",
+      "name": "Strait of Malacca",
+      "geometry_type": "Point",
+      "coordinates": [101.5, 2.5],
+      "gps": {"latitude": 2.5, "longitude": 101.5},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road", "china_indochina_peninsula", "china_laos_pan_asian"]
+    },
+    {
+      "id": "sunda_strait",
+      "issue_entry": "Sunda and Lombok straits",
+      "name": "Sunda Strait",
+      "geometry_type": "Point",
+      "coordinates": [105.85, -5.95],
+      "gps": {"latitude": -5.95, "longitude": 105.85},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "lombok_strait",
+      "issue_entry": "Sunda and Lombok straits",
+      "name": "Lombok Strait",
+      "geometry_type": "Point",
+      "coordinates": [115.75, -8.5],
+      "gps": {"latitude": -8.5, "longitude": 115.75},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "strait_of_hormuz",
+      "issue_entry": "Strait of Hormuz",
+      "name": "Strait of Hormuz",
+      "geometry_type": "Point",
+      "coordinates": [56.25, 26.56],
+      "gps": {"latitude": 26.56, "longitude": 56.25},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road", "china_central_asia_west_asia"]
+    },
+    {
+      "id": "bab_el_mandeb",
+      "issue_entry": "Bab-el-Mandeb",
+      "name": "Bab-el-Mandeb",
+      "geometry_type": "Point",
+      "coordinates": [43.33, 12.58],
+      "gps": {"latitude": 12.58, "longitude": 43.33},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "suez_canal",
+      "issue_entry": "Suez Canal",
+      "name": "Suez Canal",
+      "geometry_type": "LineString",
+      "waypoints": [
+        {"name": "Port Said entrance", "coordinates": [32.3019, 31.2653]},
+        {"name": "Great Bitter Lake area", "coordinates": [32.35, 30.46]},
+        {"name": "Suez entrance", "coordinates": [32.52627, 29.97371]}
+      ],
+      "coordinate_precision": "schematic_waterway_line",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "bosporus",
+      "issue_entry": "Bosporus and Dardanelles",
+      "name": "Bosporus",
+      "geometry_type": "LineString",
+      "waypoints": [
+        {"name": "Black Sea entrance", "coordinates": [29.13, 41.23]},
+        {"name": "Sea of Marmara entrance", "coordinates": [28.98, 40.99]}
+      ],
+      "coordinate_precision": "schematic_waterway_line",
+      "linked_corridor_ids": ["trans_caspian_middle_corridor", "maritime_silk_road"]
+    },
+    {
+      "id": "dardanelles",
+      "issue_entry": "Bosporus and Dardanelles",
+      "name": "Dardanelles",
+      "geometry_type": "LineString",
+      "waypoints": [
+        {"name": "Sea of Marmara entrance", "coordinates": [26.7, 40.4]},
+        {"name": "Aegean Sea entrance", "coordinates": [26.18, 40.04]}
+      ],
+      "coordinate_precision": "schematic_waterway_line",
+      "linked_corridor_ids": ["trans_caspian_middle_corridor", "maritime_silk_road"]
+    },
+    {
+      "id": "strait_of_gibraltar",
+      "issue_entry": "Strait of Gibraltar",
+      "name": "Strait of Gibraltar",
+      "geometry_type": "Point",
+      "coordinates": [-5.6, 35.96],
+      "gps": {"latitude": 35.96, "longitude": -5.6},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "panama_canal",
+      "issue_entry": "Panama Canal",
+      "name": "Panama Canal",
+      "geometry_type": "LineString",
+      "waypoints": [
+        {"name": "Colón entrance", "coordinates": [-79.9, 9.36]},
+        {"name": "Gatún Lake", "coordinates": [-79.92, 9.26]},
+        {"name": "Panama City entrance", "coordinates": [-79.56, 8.95]}
+      ],
+      "coordinate_precision": "schematic_waterway_line",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "cape_of_good_hope_route",
+      "issue_entry": "Cape of Good Hope route",
+      "name": "Cape of Good Hope Route",
+      "geometry_type": "Point",
+      "coordinates": [18.474, -34.3568],
+      "gps": {"latitude": -34.3568, "longitude": 18.474},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "taiwan_strait",
+      "issue_entry": "Taiwan Strait and major South China Sea approaches",
+      "name": "Taiwan Strait",
+      "geometry_type": "Point",
+      "coordinates": [119.5, 24.5],
+      "gps": {"latitude": 24.5, "longitude": 119.5},
+      "coordinate_precision": "representative_route_point",
+      "linked_corridor_ids": ["maritime_silk_road"]
+    },
+    {
+      "id": "south_china_sea_approaches",
+      "issue_entry": "Taiwan Strait and major South China Sea approaches",
+      "name": "Major South China Sea Approaches",
+      "geometry_type": "MultiPoint",
+      "waypoints": [
+        {"name": "Luzon Strait approach", "coordinates": [121.0, 20.5]},
+        {"name": "Natuna approach", "coordinates": [108.5, 6.0]},
+        {"name": "Singapore Strait approach", "coordinates": [104.0, 1.2]}
+      ],
+      "coordinate_precision": "representative_route_points",
+      "linked_corridor_ids": ["maritime_silk_road", "china_indochina_peninsula", "china_laos_pan_asian"]
+    },
+    {
+      "id": "bering_strait_northern_sea_route",
+      "issue_entry": "Bering Strait / Northern Sea Route",
+      "name": "Bering Strait / Northern Sea Route Overlay",
+      "geometry_type": "MultiPoint",
+      "waypoints": [
+        {"name": "Bering Strait", "coordinates": [-169.0, 65.9]},
+        {"name": "Pevek", "coordinates": [170.3133, 69.7008]},
+        {"name": "Sabetta", "coordinates": [72.072, 71.273]},
+        {"name": "Murmansk", "coordinates": [33.09922, 68.96778]}
+      ],
+      "coordinate_precision": "schematic_route_control_points",
+      "linked_corridor_ids": ["polar_silk_road_nsr"],
+      "notes": "The full map-safe date-line-split route is in the linked corridor record."
+    }
+  ]
+}
