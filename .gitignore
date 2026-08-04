@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.dump
+*.dump.manifest
+*.backup
+images/
+metadata.json

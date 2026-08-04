@@ -1,0 +1,59 @@
+name: Database
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/database.yml"
+      - "compose.yaml"
+      - "db/**"
+      - "scripts/**"
+      - "tests/**"
+      - "Makefile"
+      - "infra_timelapse_ports_corridors.json"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/database.yml"
+      - "compose.yaml"
+      - "db/**"
+      - "scripts/**"
+      - "tests/**"
+      - "Makefile"
+      - "infra_timelapse_ports_corridors.json"
+
+jobs:
+  postgres-postgis:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_DB: infra_timelapse
+          POSTGRES_USER: infra_timelapse
+          POSTGRES_PASSWORD: infra_timelapse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U infra_timelapse -d infra_timelapse"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://infra_timelapse:infra_timelapse@localhost:5432/infra_timelapse
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run deterministic seed unit tests
+        run: make test
+      - name: Migrate, seed twice, and validate
+        run: |
+          make db-migrate
+          make db-seed
+          make db-seed
+          make db-validate
