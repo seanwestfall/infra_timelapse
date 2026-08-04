@@ -1572,7 +1572,7 @@ BEGIN
           ON second_party.party_id > first_party.party_id
          AND second_party.project_id = first_party.project_id
          AND second_party.organization_id = first_party.organization_id
-         AND second_party.role = first_party.role
+         AND second_party.party_role = first_party.party_role
          AND daterange(
                  COALESCE(second_party.effective_from, '-infinity'::date),
                  COALESCE(second_party.effective_to, 'infinity'::date),
