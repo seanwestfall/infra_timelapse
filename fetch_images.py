@@ -19,6 +19,7 @@ BASE_URL = "https://maps.googleapis.com/maps/api/staticmap"
 DEFAULT_INVENTORY_PATH = Path(__file__).with_name(
     "infra_timelapse_ports_corridors.json"
 )
+IDENTIFIER_PATTERN = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*\Z")
 
 
 def config_value(name: str, environment_name: str, default: Any) -> Any:
@@ -66,10 +67,21 @@ def parse_coordinates(value: Any, context: str) -> tuple[float, float]:
     return latitude, longitude
 
 
+def validate_identifier(value: Any, context: str) -> str:
+    """Return an ASCII machine identifier or raise a useful validation error."""
+    identifier = str(value or "")
+    if not IDENTIFIER_PATTERN.fullmatch(identifier):
+        raise ValueError(
+            f"{context} must be a lowercase ASCII identifier using "
+            "letters, numbers, and single underscores"
+        )
+    return identifier
+
+
 def iter_ports(inventory: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """Yield one satellite-image target for each port or logistics node."""
     for port in inventory["ports_and_logistics_nodes"]:
-        port_id = str(port["id"])
+        port_id = validate_identifier(port.get("id"), "port id")
         latitude, longitude = parse_coordinates(
             port.get("coordinates"), f"port {port_id!r} coordinates"
         )
@@ -98,7 +110,7 @@ def iter_corridor_waypoints(
 ) -> Iterator[dict[str, Any]]:
     """Yield every ordered waypoint from every corridor route segment."""
     for corridor in corridors:
-        corridor_id = str(corridor["id"])
+        corridor_id = validate_identifier(corridor.get("id"), "corridor id")
         corridor_name = str(corridor["name"])
         route_segments = corridor.get("route_segments")
         if not isinstance(route_segments, list):
@@ -126,11 +138,19 @@ def iter_corridor_waypoints(
                         f"waypoint {waypoint_index} coordinates"
                     ),
                 )
-                waypoint_id = (
-                    f"{corridor_id}-{segment_index:02d}-{waypoint_index:03d}"
+                waypoint_identifier = validate_identifier(
+                    waypoint.get("node_id") or waypoint.get("id"),
+                    (
+                        f"corridor {corridor_id!r} segment {segment_index} "
+                        f"waypoint {waypoint_index} identifier"
+                    ),
+                )
+                target_id = (
+                    f"{corridor_id}-{segment_index:02d}-"
+                    f"{waypoint_index:03d}-{waypoint_identifier}"
                 )
                 yield {
-                    "id": waypoint_id,
+                    "id": target_id,
                     "target_type": "corridor_waypoint",
                     "name": f"{corridor_name} — {waypoint_name}",
                     "latitude": latitude,
@@ -140,13 +160,14 @@ def iter_corridor_waypoints(
                         "corridors",
                         corridor_id,
                         f"segment-{segment_index:02d}",
-                        f"{waypoint_index:03d}-{slugify(waypoint_name)}",
+                        f"{waypoint_index:03d}-{waypoint_identifier}",
                     ),
                     "corridor_id": corridor_id,
                     "corridor_name": corridor_name,
                     "segment_index": segment_index,
                     "segment_name": segment_name,
                     "waypoint_index": waypoint_index,
+                    "waypoint_id": waypoint_identifier,
                     "waypoint_name": waypoint_name,
                     "node_id": waypoint.get("node_id"),
                 }
@@ -163,12 +184,6 @@ def iter_targets(
         yield from iter_ports(inventory)
     if scope in {"corridors", "all"}:
         yield from iter_corridor_waypoints(iter_corridors(inventory))
-
-
-def slugify(value: str) -> str:
-    """Create a stable, filesystem-safe path component."""
-    slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
-    return slug or "waypoint"
 
 
 def fetch_satellite_image(target: dict[str, Any]) -> Path:
