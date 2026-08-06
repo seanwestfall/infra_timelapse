@@ -31,9 +31,10 @@ def config_value(name: str, environment_name: str, default: Any) -> Any:
 API_KEY = str(config_value("API_KEY", "GOOGLE_MAPS_API_KEY", ""))
 OUTPUT_DIR = Path(config_value("OUTPUT_DIR", "OUTPUT_DIR", "images"))
 IMAGE_SIZE = str(config_value("IMAGE_SIZE", "IMAGE_SIZE", "640x640"))
+IMAGE_SCALE = int(config_value("IMAGE_SCALE", "IMAGE_SCALE", 2))
 MAP_TYPE = str(config_value("MAP_TYPE", "MAP_TYPE", "satellite"))
-PORT_ZOOM = int(config_value("PORT_ZOOM", "PORT_ZOOM", 14))
-CORRIDOR_ZOOM = int(config_value("CORRIDOR_ZOOM", "CORRIDOR_ZOOM", 11))
+PORT_ZOOM = int(config_value("PORT_ZOOM", "PORT_ZOOM", 15))
+CORRIDOR_ZOOM = int(config_value("CORRIDOR_ZOOM", "CORRIDOR_ZOOM", 12))
 METADATA_FILE = Path(
     config_value("METADATA_FILE", "METADATA_FILE", "metadata.json")
 )
@@ -193,6 +194,7 @@ def fetch_satellite_image(target: dict[str, Any]) -> Path:
         "center": f'{target["latitude"]},{target["longitude"]}',
         "zoom": target["zoom"],
         "size": IMAGE_SIZE,
+        "scale": IMAGE_SCALE,
         "maptype": MAP_TYPE,
         "key": API_KEY,
     }
