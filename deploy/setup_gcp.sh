@@ -11,7 +11,7 @@ BUCKET_NAME="${BUCKET_NAME:-${PROJECT_ID}-infra-timelapse-images}"
 SECRET_NAME="${SECRET_NAME:-google-maps-api-key}"
 RUNTIME_SA_NAME="${RUNTIME_SA_NAME:-infra-timelapse-job}"
 SCHEDULER_SA_NAME="${SCHEDULER_SA_NAME:-infra-timelapse-scheduler}"
-SCHEDULE="${SCHEDULE:-0 3 1,15 * *}"
+SCHEDULE="${SCHEDULE:-0 3 * * *}"
 TIME_ZONE="${TIME_ZONE:-Pacific/Honolulu}"
 
 if [[ -z "${PROJECT_ID}" || "${PROJECT_ID}" == "(unset)" ]]; then

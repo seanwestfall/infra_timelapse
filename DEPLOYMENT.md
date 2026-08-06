@@ -1,8 +1,9 @@
 # Google Cloud deployment
 
-Infra Timelapse runs as a finite Cloud Run Job. Cloud Scheduler invokes it at
-03:00 on the 1st and 15th of each month in `Pacific/Honolulu`. Each execution
-stores images and a SHA-256 manifest in a private Cloud Storage bucket.
+Infra Timelapse runs as a finite Cloud Run Job. Cloud Scheduler currently
+invokes it daily at 03:00 in `Pacific/Honolulu` for short-term schedule
+validation. Each execution stores images and a SHA-256 manifest in a private
+Cloud Storage bucket.
 
 ## Prerequisites
 
@@ -59,8 +60,10 @@ The setup creates or updates:
 - a scheduler service account with permission to execute only the Cloud Run job
 - the Cloud Run job and Cloud Scheduler HTTP job
 
-The schedule expression is `0 3 1,15 * *`. This means twice monthly, not an
-exact 14-day interval.
+The current test schedule expression is `0 3 * * *`, which runs daily at 03:00
+in `Pacific/Honolulu`. To restore the twice-monthly cadence without changing
+the script default, deploy with `SCHEDULE="0 3 1,15 * *"`. For a weekly Sunday
+capture, use `SCHEDULE="0 3 * * 0"`.
 
 ## Roll back compute resources
 
