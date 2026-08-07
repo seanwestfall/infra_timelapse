@@ -49,6 +49,14 @@ gcloud storage ls gs://infra-timelapse-infra-timelapse-images/manifests/
 A full run should report 204 uploaded images. Objects are stored under a unique
 UTC run identifier, so later captures do not overwrite earlier captures.
 
+Each Static Maps request is retried up to four times for network failures and
+HTTP `429`, `500`, `502`, `503`, or `504` responses, using exponential backoff
+with jitter. If an individual target still fails, the run continues, uploads
+the successful captures, and publishes a `partial_success` manifest containing
+the failed target ID, name, status code, and attempt count. The job fails only
+when every selected target fails or a job-level operation such as storage
+uploading fails.
+
 ## Resources and access
 
 The setup creates or updates:
