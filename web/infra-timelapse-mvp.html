@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Infra Timelapse Explorer – MVP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- MapLibre GL JS -->
+<link href="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.js"></script>
+<style>
+  body { margin:0; font-family:system-ui, sans-serif; }
+  #map { position:absolute; top:0; bottom:0; left:0; right:0; }
+  .sidebar { max-width:400px; width:100%; background:#1f2937; color:#fff; overflow-y:auto; }
+  .sidebar-header { padding:1rem; border-bottom:1px solid #374151; }
+  .sidebar-content { padding:1rem; }
+  .hidden { display:none; }
+  .btn { @apply px-3 py-1 rounded bg-teal-600 hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-300; }
+  .btn-disabled { @apply bg-gray-600 cursor-not-allowed; }
+  .playback-speed button { @apply btn mx-1; }
+</style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+<!-- Top navigation -->
+<header class="flex items-center justify-between p-4 bg-gray-800">
+  <h1 class="text-xl font-semibold">Infra Timelapse Explorer</h1>
+  <input id="search" type="text" placeholder="Search…" class="px-2 py-1 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+  <span id="status" class="text-sm text-gray-400">Demo data</span>
+</header>
+
+<div class="flex h-[calc(100vh-4rem)]">
+  <!-- Map -->
+  <div id="map" class="flex-1"></div>
+
+  <!-- Sidebar (hidden on mobile, toggled via button) -->
+  <aside id="sidebar" class="sidebar hidden md:block">
+    <div class="sidebar-header flex items-center justify-between">
+      <h2 id="target-name" class="text-lg font-medium">Select a target</h2>
+      <button id="close-sidebar" class="md:hidden btn">✕</button>
+    </div>
+    <div class="sidebar-content">
+      <section id="target-info" class="mb-4 hidden">
+        <p><strong>Type:</strong> <span id="target-type"></span></p>
+        <p><strong>Country:</strong> <span id="target-country"></span></p>
+        <p><strong>Coordinates:</strong> <span id="target-coords"></span></p>
+      </section>
+
+      <section id="viewer-section" class="hidden">
+        <div class="relative">
+          <img id="main-image" src="" alt="Timelapse frame" class="w-full object-contain cursor-pointer" />
+          <div id="loading-indicator" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
+            <span class="animate-spin border-4 border-teal-500 border-t-transparent rounded-full w-8 h-8"></span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center justify-between mt-2">
+          <button id="prev-frame" class="btn">← Prev</button>
+          <div class="flex items-center">
+            <label for="frame-slider" class="mr-2">Frame</label>
+            <input id="frame-slider" type="range" min="0" max="0" value="0" class="w-32"/>
+            <span id="frame-counter" class="ml-2 text-sm"></span>
+          </div>
+          <button id="next-frame" class="btn">Next →</button>
+        </div>
+
+        <div class="flex items-center justify-center mt-2">
+          <button id="play-pause" class="btn">Play</button>
+          <div class="playback-speed ml-4">
+            <button data-speed="0.5">0.5×</button>
+            <button data-speed="1" class="bg-teal-500">1×</button>
+            <button data-speed="2">2×</button>
+            <button data-speed="4">4×</button>
+          </div>
+        </div>
+
+        <div class="mt-2 flex justify-between">
+          <button id="compare-mode" class="btn">Compare</button>
+          <button id="fullscreen-btn" class="btn">Full‑screen</button>
+        </div>
+      </section>
+
+      <!-- Comparison view -->
+      <section id="compare-section" class="hidden mt-4">
+        <div class="flex flex-col md:flex-row gap-2">
+          <div class="flex-1 relative">
+            <img id="compare-left" src="" alt="Left frame" class="w-full object-contain"/>
+          </div>
+          <div class="flex-1 relative">
+            <img id="compare-right" src="" alt="Right frame" class="w-full object-contain"/>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <button id="swap-dates" class="btn">Swap Dates</button>
+          <button id="exit-compare" class="btn">Back to Timeline</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+// ---------- Mock data ----------
+type TargetType =
+  | "port"
+  | "inland_port"
+  | "logistics_hub"
+  | "naval_facility"
+  | "corridor_waypoint";
+
+interface Target {
+  id: string;
+  name: string;
+  type: TargetType;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  region?: string;
+  aliases?: string[];
+}
+interface Capture {
+  targetId: string;
+  runId: string; // ISO timestamp (date only for demo)
+  capturedAt: string; // same as runId
+  imageUrl: string;
+}
+const SAMPLE_TARGETS: Target[] = [
+  {
+    id: "port_of_chancay",
+    name: "Port of Chancay",
+    type: "port",
+    latitude: -12.5939,
+    longitude: -77.1418,
+    country: "Peru",
+    aliases: ["Chancay"],
+  },
+  {
+    id: "malaszewicze",
+    name: "Małaszewicze Logistics Hub",
+    type: "logistics_hub",
+    latitude: 52.2694,
+    longitude: 23.2159,
+    country: "Poland",
+    aliases: ["Malaszewicze"],
+  },
+  {
+    id: "urumqi",
+    name: "Ürümqi",
+    type: "inland_port",
+    latitude: 43.8256,
+    longitude: 87.6168,
+    country: "China",
+    aliases: ["Urumqi"],
+  },
+  {
+    id: "port_of_mombasa",
+    name: "Port of Mombasa",
+    type: "port",
+    latitude: -4.0459,
+    longitude: 39.6668,
+    country: "Kenya",
+  },
+  {
+    id: "gwadar",
+    name: "Gwadar Port",
+    type: "port",
+    latitude: 25.1287,
+    longitude: 62.3294,
+    country: "Pakistan",
+  },
+  {
+    id: "port_of_melbourne",
+    name: "Port of Melbourne",
+    type: "port",
+    latitude: -37.8136,
+    longitude: 144.9631,
+    country: "Australia",
+  },
+];
+const SAMPLE_CAPTURES: Capture[] = [];
+// generate three dummy captures per target (dates: 2023‑01‑01, 2023‑06‑01, 2023‑12‑01)
+SAMPLE_TARGETS.forEach(t => {
+  ["2023-01-01", "2023-06-01", "2023-12-01"].forEach(date => {
+    SAMPLE_CAPTURES.push({
+      targetId: t.id,
+      runId: date,
+      capturedAt: date,
+      imageUrl: `https://picsum.photos/seed/${t.id}-${date}/1280/1280`,
+    });
+  });
+});
+// ---------- Utility functions ----------
+function debounce<T extends (...args:any[])=>any>(fn:T, delay:number){
+  let t:NodeJS.Timeout;
+  return (...args:Parameters<T>)=>{
+    clearTimeout(t);
+    t=setTimeout(()=>fn(...args),delay);
+  };
+}
+function getCapturesForTarget(id:string):Capture[]{
+  return SAMPLE_CAPTURES.filter(c=>c.targetId===id).sort((a,b)=>a.capturedAt.localeCompare(b.capturedAt));
+}
+function getTargetById(id:string):Target|undefined{
+  return SAMPLE_TARGETS.find(t=>t.id===id);
+}
+// ---------- Map setup ----------
+const map = new maplibregl.Map({
+  container: "map",
+  style: "https://demotiles.maplibre.org/style.json",
+  center: [0,20],
+  zoom: 1.5,
+});
+map.addControl(new maplibregl.NavigationControl());
+map.addControl(new maplibregl.ScaleControl({maxWidth:80,unit:"metric"}));
+map.on("load", addMarkers);
+function addMarkers(){
+  const geojson = {
+    type: "FeatureCollection",
+    features: SAMPLE_TARGETS.map(t=>({
+      type:"Feature",
+      geometry:{type:"Point",coordinates:[t.longitude,t.latitude]},
+      properties:{id:t.id,name:t.name,type:t.type}
+    }))
+  };
+  map.addSource("targets",{
+    type:"geojson",
+    data:geojson,
+    cluster:true,
+    clusterMaxZoom:14,
+    clusterRadius:50
+  });
+  // cluster circles
+  map.addLayer({
+    id:"clusters",
+    type:"circle",
+    source:"targets",
+    filter:["has","point_count"],
+    paint:{
+      "circle-color":"#0284c7",
+      "circle-radius":["step",["get","point_count"],20,10,30,30,40]
+    }
+  });
+  map.addLayer({
+    id:"cluster-count",
+    type:"symbol",
+    source:"targets",
+    filter:["has","point_count"],
+    layout:{
+      "text-field":"{point_count_abbreviated}",
+      "text-size":12
+    }
+  });
+  // individual points
+  map.addLayer({
+    id:"unclustered-point",
+    type:"symbol",
+    source:"targets",
+    filter:["!",["has","point_count"]],
+    layout:{
+      "icon-image":"marker-15",
+      "icon-size":1.2,
+      "text-field":"{name}",
+      "text-offset":[0,1.2],
+      "text-anchor":"top",
+      "text-size":12,
+      "text-allow-overlap":false
+    },
+    paint:{
+      "text-color":"#fff"
+    }
+  });
+  // click handling
+  map.on("click","unclustered-point",(e)=>{
+    const props = e.features?.[0].properties;
+    if(props?.id){ openTarget(props.id); }
+  });
+}
+function openTarget(id:string){
+  const target = getTargetById(id);
+  if(!target) return;
+  // fill sidebar
+  document.getElementById("target-name")!.textContent = target.name;
+  document.getElementById("target-type")!.textContent = target.type;
+  document.getElementById("target-country")!.textContent = target.country||"–";
+  document.getElementById("target-coords")!.textContent = `${target.latitude.toFixed(3)}, ${target.longitude.toFixed(3)}`;
+  document.getElementById("target-info")!.classList.remove("hidden");
+  // load captures
+  const captures = getCapturesForTarget(id);
+  currentCaptures = captures;
+  currentTargetId = id;
+  // reset UI
+  document.getElementById("frame-slider")!.max = String(captures.length-1);
+  document.getElementById("frame-slider")!.value = "0";
+  setFrame(0);
+  document.getElementById("viewer-section")!.classList.remove("hidden");
+  document.getElementById("compare-section")!.classList.add("hidden");
+  // show sidebar on mobile
+  document.getElementById("sidebar")!.classList.remove("hidden");
+}
+let currentCaptures:Capture[] = [];
+let currentTargetId:string = "";
+let playbackTimer:number|undefined;
+let playbackSpeed = 1;
+// UI handlers
+function setFrame(idx:number){
+  const cap = currentCaptures[idx];
+  if(!cap) return;
+  const img = document.getElementById("main-image") as HTMLImageElement;
+  img.src = cap.imageUrl;
+  img.alt = `${cap.targetId} – ${cap.capturedAt}`;
+  document.getElementById("frame-counter")!.textContent = `${idx+1} of ${currentCaptures.length}`;
+  (document.getElementById("frame-slider") as HTMLInputElement).value = String(idx);
+}
+function prevFrame(){
+  const idx = Number((document.getElementById("frame-slider") as HTMLInputElement).value);
+  if(idx>0) setFrame(idx-1);
+}
+function nextFrame(){
+  const idx = Number((document.getElementById("frame-slider") as HTMLInputElement).value);
+  if(idx<currentCaptures.length-1) setFrame(idx+1);
+}
+function startPlayback(){
+  if(playbackTimer) return;
+  document.getElementById("play-pause")!.textContent = "Pause";
+  const step = () => {
+    const idx = Number((document.getElementById("frame-slider") as HTMLInputElement).value);
+    if (idx < currentCaptures.length-1) setFrame(idx+1);
+    else setFrame(0);
+    playbackTimer = window.setTimeout(step, 1000/playbackSpeed);
+  };
+  playbackTimer = window.setTimeout(step, 1000/playbackSpeed);
+}
+function stopPlayback(){
+  if(playbackTimer){
+    clearTimeout(playbackTimer);
+    playbackTimer = undefined;
+    document.getElementById("play-pause")!.textContent = "Play";
+  }
+}
+function togglePlay(){
+  if(playbackTimer) stopPlayback(); else startPlayback();
+}
+function changeSpeed(speed:number){
+  playbackSpeed = speed;
+  // restart if playing
+  if(playbackTimer){
+    stopPlayback();
+    startPlayback();
+  }
+  // update button styling
+  document.querySelectorAll(".playback-speed button").forEach(btn=>{
+    (btn as HTMLElement).classList.toggle("bg-teal-500", Number(btn.getAttribute("data-speed"))===speed);
+  });
+}
+function enterCompareMode(){
+  if(currentCaptures.length<2) return;
+  const leftIdx = 0;
+  const rightIdx = currentCaptures.length-1;
+  (document.getElementById("compare-left") as HTMLImageElement).src = currentCaptures[leftIdx].imageUrl;
+  (document.getElementById("compare-right") as HTMLImageElement).src = currentCaptures[rightIdx].imageUrl;
+  document.getElementById("viewer-section")!.classList.add("hidden");
+  document.getElementById("compare-section")!.classList.remove("hidden");
+}
+function swapDates(){
+  const leftImg = (document.getElementById("compare-left") as HTMLImageElement);
+  const rightImg = (document.getElementById("compare-right") as HTMLImageElement);
+  const tmp = leftImg.src;
+  leftImg.src = rightImg.src;
+  rightImg.src = tmp;
+}
+function exitCompare(){
+  document.getElementById("compare-section")!.classList.add("hidden");
+  document.getElementById("viewer-section")!.classList.remove("hidden");
+}
+// Attach listeners
+document.getElementById("prev-frame")!.addEventListener("click",prevFrame);
+document.getElementById("next-frame")!.addEventListener("click",nextFrame);
+(document.getElementById("frame-slider") as HTMLInputElement).addEventListener("input", (e)=>{
+  setFrame(Number((e.target as HTMLInputElement).value));
+});
+document.getElementById("play-pause")!.addEventListener("click",togglePlay);
+document.querySelectorAll(".playback-speed button").forEach(btn=>{
+  btn.addEventListener("click",()=>changeSpeed(Number(btn.getAttribute("data-speed"))));
+});
+document.getElementById("compare-mode")!.addEventListener("click",enterCompareMode);
+document.getElementById("swap-dates")!.addEventListener("click",swapDates);
+document.getElementById("exit-compare")!.addEventListener("click",exitCompare);
+document.getElementById("close-sidebar")!.addEventListener("click",()=> {
+  document.getElementById("sidebar")!.classList.add("hidden");
+});
+// Search (debounced)
+const searchInput = document.getElementById("search") as HTMLInputElement;
+searchInput.addEventListener("input", debounce((e)=>{
+  const term = (e.target as HTMLInputElement).value.trim().toLowerCase();
+  const filtered = SAMPLE_TARGETS.filter(t=>{
+    const src = [t.name,...(t.aliases||[])].join(" ").toLowerCase();
+    return src.includes(term);
+  });
+  // temporarily replace map source data
+  const source = map.getSource("targets") as any;
+  source.setData({
+    type:"FeatureCollection",
+    features:filtered.map(t=>({
+      type:"Feature",
+      geometry:{type:"Point",coordinates:[t.longitude,t.latitude]},
+      properties:{id:t.id,name:t.name,type:t.type}
+    }))
+  });
+},300));
+</script>
+</body>
+</html>
