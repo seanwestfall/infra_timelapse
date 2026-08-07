@@ -50,6 +50,13 @@
       <button id="close-sidebar" class="md:hidden btn">✕</button>
     </div>
     <div class="sidebar-content">
+      <label for="marker-scope" class="block text-sm font-medium mb-1">Map markers</label>
+      <select id="marker-scope" class="w-full mb-4 px-2 py-2 rounded bg-gray-700 text-white">
+        <option value="all">Ports and corridors</option>
+        <option value="ports">Ports only</option>
+        <option value="corridors">Corridors only</option>
+      </select>
+
       <label for="target-select" class="block text-sm font-medium mb-1">Location</label>
       <select id="target-select" class="w-full mb-4 px-2 py-2 rounded bg-gray-700 text-white">
         <option value="">Loading locations…</option>
@@ -325,13 +332,36 @@ function getTargetById(id) {
   };
 }
 
+function targetMarkerGroup(target) {
+  return target.type === "corridor_waypoint" ? "corridors" : "ports";
+}
+
+function filteredMarkerTargets() {
+  const scope = $("marker-scope").value;
+  const term = $("search").value.trim().toLocaleLowerCase();
+  return visibleTargets.filter((target) => {
+    const matchesScope = scope === "all" || targetMarkerGroup(target) === scope;
+    const searchable = [target.id, target.name, target.type, target.country, ...(target.aliases || [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase();
+    return matchesScope && searchable.includes(term);
+  });
+}
+
 function targetFeatures(targets) {
   return {
     type: "FeatureCollection",
     features: targets.filter((target) => Number.isFinite(target.longitude) && Number.isFinite(target.latitude)).map((target) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [target.longitude, target.latitude] },
-      properties: { id: target.id, name: target.name, type: target.type },
+      properties: {
+        id: target.id,
+        name: target.name,
+        type: target.type,
+        markerGroup: targetMarkerGroup(target),
+        captureCount: getCapturesForTarget(target.id).length,
+      },
     })),
   };
 }
@@ -341,11 +371,17 @@ function updateMap(targets) {
   if (source) source.setData(targetFeatures(targets));
 }
 
+function updateMarkerFilter() {
+  const targets = filteredMarkerTargets();
+  updateMap(targets);
+  $("marker-scope").title = `${targets.length} markers shown`;
+}
+
 function addMapLayers() {
-  map.addSource("targets", { type: "geojson", data: targetFeatures(visibleTargets), cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
+  map.addSource("targets", { type: "geojson", data: targetFeatures(filteredMarkerTargets()), cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
   map.addLayer({ id: "clusters", type: "circle", source: "targets", filter: ["has", "point_count"], paint: { "circle-color": "#0284c7", "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 30, 40] } });
   map.addLayer({ id: "cluster-count", type: "symbol", source: "targets", filter: ["has", "point_count"], layout: { "text-field": "{point_count_abbreviated}", "text-size": 12 } });
-  map.addLayer({ id: "unclustered-point", type: "circle", source: "targets", filter: ["!", ["has", "point_count"]], paint: { "circle-color": "#14b8a6", "circle-radius": 6, "circle-stroke-color": "#ecfeff", "circle-stroke-width": 2 } });
+  map.addLayer({ id: "unclustered-point", type: "circle", source: "targets", filter: ["!", ["has", "point_count"]], paint: { "circle-color": ["match", ["get", "markerGroup"], "corridors", "#f59e0b", "#14b8a6"], "circle-opacity": ["case", [">", ["get", "captureCount"], 0], 1, 0.6], "circle-radius": 6, "circle-stroke-color": "#ecfeff", "circle-stroke-width": 2 } });
   map.on("click", "unclustered-point", (event) => {
     const id = event.features?.[0]?.properties?.id;
     if (id) openTarget(id);
@@ -364,11 +400,13 @@ function addMapLayers() {
 
 function updateControlState() {
   const multiple = currentCaptures.length > 1;
+  const any = currentCaptures.length > 0;
   $("prev-frame").disabled = !multiple;
   $("next-frame").disabled = !multiple;
   $("frame-slider").disabled = !multiple;
   $("play-pause").disabled = !multiple;
   $("compare-mode").disabled = !multiple;
+  $("fullscreen-btn").disabled = !any;
 }
 
 function preloadAdjacent(index) {
@@ -417,6 +455,22 @@ function setFrame(index) {
   preloadAdjacent(index);
 }
 
+function showNoCaptures() {
+  const image = $("main-image");
+  image.onload = null;
+  image.onerror = null;
+  image.removeAttribute("src");
+  image.classList.add("hidden");
+  $("loading-indicator").classList.add("hidden");
+  $("image-error").textContent = "No captures yet for this location.";
+  $("image-error").classList.remove("hidden");
+  $("frame-slider").value = "0";
+  $("frame-counter").textContent = "0 of 0";
+  $("capture-date").textContent = "";
+  $("capture-date").dateTime = "";
+  $("capture-run").textContent = "";
+}
+
 function openTarget(id) {
   stopPlayback();
   const target = getTargetById(id);
@@ -433,7 +487,8 @@ function openTarget(id) {
   $("sidebar").classList.remove("hidden");
   $("frame-slider").max = String(Math.max(0, currentCaptures.length - 1));
   updateControlState();
-  setFrame(Math.max(0, currentCaptures.length - 1));
+  if (currentCaptures.length) setFrame(currentCaptures.length - 1);
+  else showNoCaptures();
 }
 
 function previousFrame() {
@@ -477,35 +532,54 @@ function populateTargetSelect() {
 
 async function initialize() {
   try {
+    let inventoryError;
+    let indexError;
     const [inventoryResult, indexResult] = await Promise.all([
-      fetchJson("../infra_timelapse_ports_corridors.json").catch(() => null),
-      loadFirstIndex(),
+      fetchJson("../infra_timelapse_ports_corridors.json").catch((error) => {
+        inventoryError = error;
+        return null;
+      }),
+      loadFirstIndex().catch((error) => {
+        indexError = error;
+        return null;
+      }),
     ]);
     if (inventoryResult) inventoryTargets(inventoryResult).forEach((target) => targetsById.set(target.id, target));
-    const captures = collectCaptures(indexResult.data).filter((capture, index, all) =>
+    const captures = indexResult ? collectCaptures(indexResult.data).filter((capture, index, all) =>
       all.findIndex((candidate) => candidate.targetId === capture.targetId && candidate.imageUrl === capture.imageUrl) === index
-    );
+    ) : [];
     captures.forEach((capture) => {
       if (!capturesByTarget.has(capture.targetId)) capturesByTarget.set(capture.targetId, []);
       capturesByTarget.get(capture.targetId).push(capture);
     });
     capturesByTarget.forEach((items) => items.sort((a, b) => a.capturedAt.localeCompare(b.capturedAt) || a.runId.localeCompare(b.runId)));
-    visibleTargets = [...capturesByTarget.keys()].map(getTargetById).sort((a, b) => a.name.localeCompare(b.name));
+    const targetIds = new Set([...targetsById.keys(), ...capturesByTarget.keys()]);
+    visibleTargets = [...targetIds].map(getTargetById).sort((a, b) => a.name.localeCompare(b.name));
     populateTargetSelect();
-    updateMap(visibleTargets);
-    $("status").textContent = `${captures.length} frames · ${visibleTargets.length} locations`;
+    updateMarkerFilter();
+    $("status").textContent = indexResult
+      ? `${captures.length} frames · ${visibleTargets.length} locations`
+      : `${visibleTargets.length} locations · capture index unavailable`;
     const assetsBase = configuredAssetsBase();
-    $("status").title = `Loaded from ${indexResult.url}${assetsBase ? `; images from ${assetsBase}` : ""}`;
+    $("status").title = indexResult
+      ? `Loaded from ${indexResult.url}${assetsBase ? `; images from ${assetsBase}` : ""}`
+      : indexError?.message || "Capture index unavailable";
     if (visibleTargets.length) openTarget(visibleTargets[0].id);
-    else throw new Error("The image index contained no usable captures");
+    else throw inventoryError || indexError || new Error("No locations or captures were available");
   } catch (error) {
     console.error(error);
-    $("status").textContent = "Capture index unavailable";
-    $("target-select").replaceChildren(new Option("No captures loaded", ""));
-    $("target-name").textContent = "Could not load captures";
+    $("status").textContent = "Locations unavailable";
+    $("target-select").replaceChildren(new Option("No locations loaded", ""));
+    $("target-name").textContent = "Could not load locations";
     $("sidebar").classList.remove("hidden");
+    const message = document.createElement("p");
+    message.className = "text-red-300";
+    message.textContent = error.message;
+    const help = document.createElement("p");
+    help.className = "mt-2 text-sm text-gray-300";
+    help.textContent = "Serve this repository over HTTP with its inventory file. To load captures locally, provide ?index=./timelapse-index.json&assets=../images/.";
+    $("target-info").replaceChildren(message, help);
     $("target-info").classList.remove("hidden");
-    $("target-info").innerHTML = `<p class="text-red-300">${error.message}</p><p class="mt-2 text-sm text-gray-300">Serve this repository over HTTP and provide an index with <code>?index=./timelapse-index.json</code>. For local captures, also set <code>&amp;assets=../images/</code>.</p>`;
   }
 }
 
@@ -514,6 +588,7 @@ $("next-frame").addEventListener("click", nextFrame);
 $("frame-slider").addEventListener("input", (event) => setFrame(Number(event.target.value)));
 $("play-pause").addEventListener("click", () => playbackTimer ? stopPlayback() : startPlayback());
 $("target-select").addEventListener("change", (event) => event.target.value && openTarget(event.target.value));
+$("marker-scope").addEventListener("change", updateMarkerFilter);
 document.querySelectorAll(".playback-speed button").forEach((button) => button.addEventListener("click", () => {
   playbackSpeed = Number(button.dataset.speed);
   document.querySelectorAll(".playback-speed button").forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
@@ -532,11 +607,7 @@ $("exit-compare").addEventListener("click", () => {
 $("fullscreen-btn").addEventListener("click", () => $("image-stage").requestFullscreen?.());
 $("main-image").addEventListener("click", () => $("image-stage").requestFullscreen?.());
 $("close-sidebar").addEventListener("click", () => $("sidebar").classList.add("hidden"));
-$("search").addEventListener("input", debounce((event) => {
-  const term = event.target.value.trim().toLocaleLowerCase();
-  const filtered = visibleTargets.filter((target) => [target.name, ...(target.aliases || [])].join(" ").toLocaleLowerCase().includes(term));
-  updateMap(filtered);
-}, 250));
+$("search").addEventListener("input", debounce(updateMarkerFilter, 250));
 map.on("load", () => { addMapLayers(); initialize(); });
 </script>
 </body>
