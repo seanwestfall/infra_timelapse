@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: db-up db-down db-reset db-migrate db-build-seed db-seed db-health db-validate db-test test
+.PHONY: db-up db-down db-reset db-migrate db-build-seed db-seed db-health db-validate db-test-seed-replay db-test test
 
 db-up:
 	docker compose up -d --wait db
@@ -31,11 +31,16 @@ db-health:
 db-validate:
 	$(PYTHON) scripts/db.py run db/tests/001_extension_health.sql db/tests/002_schema_constraints.sql db/tests/003_seed_invariants.sql db/tests/004_spatial_smoke.sql
 
+db-test-seed-replay:
+	$(PYTHON) scripts/db.py run db/tests/005_seed_replay_mutate.sql
+	$(MAKE) db-seed
+	$(PYTHON) scripts/db.py run db/tests/006_seed_replay_preserves_curated_state.sql
+
 db-test:
 	$(MAKE) test
 	$(MAKE) db-migrate
 	$(MAKE) db-seed
-	$(PYTHON) scripts/db.py run db/seeds/infra-inventory-v0.1.0/seed.sql
+	$(MAKE) db-test-seed-replay
 	$(PYTHON) scripts/db.py run db/tests/001_extension_health.sql db/tests/002_schema_constraints.sql db/tests/003_seed_invariants.sql db/tests/004_spatial_smoke.sql
 
 test:

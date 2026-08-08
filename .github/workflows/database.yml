@@ -49,11 +49,5 @@ jobs:
           python-version: "3.12"
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Run deterministic seed unit tests
-        run: make test
-      - name: Migrate, seed twice, and validate
-        run: |
-          make db-migrate
-          make db-seed
-          make db-seed
-          make db-validate
+      - name: Run database test suite
+        run: make db-test

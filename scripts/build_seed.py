@@ -945,7 +945,6 @@ $$;
     title = EXCLUDED.title,
     publisher = EXCLUDED.publisher,
     source_kind = EXCLUDED.source_kind,
-    is_substantive = EXCLUDED.is_substantive,
     accessed_on = EXCLUDED.accessed_on,
     license_code = EXCLUDED.license_code""",
     )
@@ -968,8 +967,7 @@ def render_entities_seed(model: dict[str, Any]) -> str:
         ],
         """ON CONFLICT (code) DO UPDATE SET
     entity_kind = EXCLUDED.entity_kind,
-    canonical_name = EXCLUDED.canonical_name,
-    record_status = EXCLUDED.record_status""",
+    canonical_name = EXCLUDED.canonical_name""",
     )
     release_entities = render_insert(
         "catalog.seed_release_entities",
@@ -1091,9 +1089,7 @@ def render_node_details_seed(model: dict[str, Any]) -> str:
         """ON CONFLICT (geometry_id) DO UPDATE SET
     geom = EXCLUDED.geom,
     source_id = EXCLUDED.source_id,
-    derivation_kind = EXCLUDED.derivation_kind,
-    record_status = EXCLUDED.record_status,
-    is_current = EXCLUDED.is_current""",
+    derivation_kind = EXCLUDED.derivation_kind""",
     )
     links_insert = render_insert(
         "catalog.node_links",
@@ -1238,9 +1234,7 @@ def render_network_seed(model: dict[str, Any]) -> str:
         """ON CONFLICT (geometry_id) DO UPDATE SET
     route_geometry = EXCLUDED.route_geometry,
     source_id = EXCLUDED.source_id,
-    derivation_kind = EXCLUDED.derivation_kind,
-    record_status = EXCLUDED.record_status,
-    is_current = EXCLUDED.is_current""",
+    derivation_kind = EXCLUDED.derivation_kind""",
     )
     memberships_insert = render_insert(
         "catalog.corridor_nodes",
@@ -1327,7 +1321,6 @@ def render_claims_seed(model: dict[str, Any]) -> str:
         relationship_rows,
         """ON CONFLICT (relationship_id) DO UPDATE SET
     relationship_type = EXCLUDED.relationship_type,
-    assertion_status = EXCLUDED.assertion_status,
     status_as_of = EXCLUDED.status_as_of""",
     )
     relationship_sources_insert = render_insert(
@@ -1372,8 +1365,6 @@ def render_claims_seed(model: dict[str, Any]) -> str:
         ],
         status_rows,
         """ON CONFLICT (status_id) DO UPDATE SET
-    lifecycle_status = EXCLUDED.lifecycle_status,
-    assertion_status = EXCLUDED.assertion_status,
     status_as_of = EXCLUDED.status_as_of,
     effective_from = EXCLUDED.effective_from""",
     )
@@ -1491,10 +1482,9 @@ BEGIN
     FROM catalog.corridor_geometries AS corridor_geometries
     JOIN catalog.seed_release_entities AS release_entities
       ON release_entities.entity_id = corridor_geometries.corridor_id
-    WHERE release_entities.seed_version = {sql_value(SEED_VERSION)}
-      AND corridor_geometries.is_current;
+    WHERE release_entities.seed_version = {sql_value(SEED_VERSION)};
     IF actual_count <> 19 THEN
-        RAISE EXCEPTION 'expected 19 current corridor geometries, found %', actual_count;
+        RAISE EXCEPTION 'expected 19 seed corridor geometries, found %', actual_count;
     END IF;
 
     IF EXISTS (
