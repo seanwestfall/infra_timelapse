@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-infra_timelapse}
+      POSTGRES_USER: ${POSTGRES_USER:-infra_timelapse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-infra_timelapse}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - .:/workspace:ro
+    working_dir: /workspace
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -U ${POSTGRES_USER:-infra_timelapse}
+          -d ${POSTGRES_DB:-infra_timelapse}
+          && psql -U ${POSTGRES_USER:-infra_timelapse}
+          -d ${POSTGRES_DB:-infra_timelapse}
+          -tAc 'SELECT PostGIS_Version()' >/dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  postgres-data:
