@@ -13,7 +13,7 @@ SECRET_NAME="${SECRET_NAME:-google-maps-api-key}"
 RUNTIME_SA_NAME="${RUNTIME_SA_NAME:-infra-timelapse-job}"
 INDEX_SA_NAME="${INDEX_SA_NAME:-infra-timelapse-index}"
 SCHEDULER_SA_NAME="${SCHEDULER_SA_NAME:-infra-timelapse-scheduler}"
-SCHEDULE="${SCHEDULE:-0 3 1,15 * *}"
+SCHEDULE="${SCHEDULE:-0 3 * * *}"
 TIME_ZONE="${TIME_ZONE:-Pacific/Honolulu}"
 
 if [[ -z "${PROJECT_ID}" || "${PROJECT_ID}" == "(unset)" ]]; then

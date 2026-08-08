@@ -2,7 +2,8 @@
 
 Infra Timelapse has three deliberately separate pieces:
 
-1. A finite Cloud Run Job captures images on the 1st and 15th of each month.
+1. A finite Cloud Run Job currently captures images daily for short-term
+   schedule validation.
 2. A read-only Cloud Run service exposes a sanitized aggregate index and
    authorized image responses from the private capture bucket.
 3. Cloudflare Pages serves the static map and forwards only `/api/*` requests
@@ -61,6 +62,14 @@ manifest. If an older bucket has manifests but no root index yet, the read
 service aggregates those manifests in memory until the next capture publishes
 the file.
 
+Each Static Maps request is retried up to four times for network failures and
+HTTP `429`, `500`, `502`, `503`, or `504` responses, using exponential backoff
+with jitter. If an individual target still fails, the run continues, uploads
+the successful captures, and publishes a `partial_success` manifest containing
+the failed target ID, name, status code, and attempt count. The job fails only
+when every selected target fails or a job-level operation such as storage
+uploading fails.
+
 Verify the read service with the URL printed by the setup script:
 
 ```bash
@@ -112,8 +121,10 @@ the aggregate capture fields needed by the page and only PNG objects under the
 direct object URIs. Capture image paths are immutable and may be cached; the
 aggregate index is refreshed every five minutes at most.
 
-The schedule expression is `0 3 1,15 * *` in `Pacific/Honolulu`. This means
-twice monthly, not an exact 14-day interval.
+The current test schedule expression is `0 3 * * *`, which runs daily at 03:00
+in `Pacific/Honolulu`. To restore the twice-monthly cadence without changing
+the script default, deploy with `SCHEDULE="0 3 1,15 * *"`. For a weekly Sunday
+capture, use `SCHEDULE="0 3 * * 0"`.
 
 ## Roll back compute resources
 

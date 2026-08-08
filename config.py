@@ -29,3 +29,14 @@ CORRIDOR_ZOOM = int(os.getenv("CORRIDOR_ZOOM", "12"))
 
 # The fetcher maintains this as a JSON list of completed image requests.
 METADATA_FILE = Path(os.getenv("METADATA_FILE", "metadata.json"))
+
+# Per-target request resilience and the machine-readable outcome consumed by
+# cloud_run_job.py. Retry delays use exponential backoff plus jitter.
+CAPTURE_REPORT_FILE = Path(
+    os.getenv("CAPTURE_REPORT_FILE", "capture-report.json")
+)
+MAX_FETCH_ATTEMPTS = int(os.getenv("MAX_FETCH_ATTEMPTS", "4"))
+RETRY_BACKOFF_SECONDS = float(os.getenv("RETRY_BACKOFF_SECONDS", "1"))
+RETRY_MAX_BACKOFF_SECONDS = float(
+    os.getenv("RETRY_MAX_BACKOFF_SECONDS", "30")
+)
