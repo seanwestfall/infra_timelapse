@@ -950,14 +950,14 @@
             {"name": "Lianyungang Port", "node_id": "lianyungang_port", "coordinates": [119.4333, 34.7167]},
             {"name": "Xi’an International Port", "node_id": "xian_international_port", "coordinates": [109.0635583, 34.4122285]},
             {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
-            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
-            {"name": "Astana", "coordinates": [71.44598, 51.1801]},
-            {"name": "Yekaterinburg", "coordinates": [60.61529, 56.85733]},
-            {"name": "Moscow", "coordinates": [37.61781, 55.75204]},
-            {"name": "Brest", "coordinates": [23.71749, 52.10894]},
+            {"id": "almaty", "name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"id": "astana", "name": "Astana", "coordinates": [71.44598, 51.1801]},
+            {"id": "yekaterinburg", "name": "Yekaterinburg", "coordinates": [60.61529, 56.85733]},
+            {"id": "moscow", "name": "Moscow", "coordinates": [37.61781, 55.75204]},
+            {"id": "brest", "name": "Brest", "coordinates": [23.71749, 52.10894]},
             {"name": "Małaszewicze", "node_id": "malaszewicze_logistics_hub", "coordinates": [23.5310557, 52.0240425]},
             {"name": "Duisburg", "node_id": "duisburg_inland_port", "coordinates": [6.75, 51.4667]},
-            {"name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
+            {"id": "rotterdam", "name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
           ]
         }
       ],
@@ -973,12 +973,12 @@
         {
           "name": "representative rail spine",
           "waypoints": [
-            {"name": "Tianjin", "coordinates": [117.17667, 39.14222]},
-            {"name": "Beijing", "coordinates": [116.39723, 39.9075]},
-            {"name": "Erenhot", "coordinates": [111.97667, 43.6475]},
-            {"name": "Ulaanbaatar", "coordinates": [106.88324, 47.90771]},
-            {"name": "Ulan-Ude", "coordinates": [107.59979, 51.82648]},
-            {"name": "Moscow", "coordinates": [37.61781, 55.75204]}
+            {"id": "tianjin", "name": "Tianjin", "coordinates": [117.17667, 39.14222]},
+            {"id": "beijing", "name": "Beijing", "coordinates": [116.39723, 39.9075]},
+            {"id": "erenhot", "name": "Erenhot", "coordinates": [111.97667, 43.6475]},
+            {"id": "ulaanbaatar", "name": "Ulaanbaatar", "coordinates": [106.88324, 47.90771]},
+            {"id": "ulan_ude", "name": "Ulan-Ude", "coordinates": [107.59979, 51.82648]},
+            {"id": "moscow", "name": "Moscow", "coordinates": [37.61781, 55.75204]}
           ]
         }
       ]
@@ -993,22 +993,22 @@
         {
           "name": "westbound main line",
           "waypoints": [
-            {"name": "Ürümqi", "coordinates": [87.60046, 43.80096]},
+            {"id": "urumqi", "name": "Ürümqi", "coordinates": [87.60046, 43.80096]},
             {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
-            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
-            {"name": "Bishkek", "coordinates": [74.59, 42.87]},
-            {"name": "Tashkent", "coordinates": [69.21627, 41.26465]},
-            {"name": "Ashgabat", "coordinates": [58.38333, 37.95]},
-            {"name": "Tehran", "coordinates": [51.42151, 35.69439]},
-            {"name": "Ankara", "coordinates": [32.85427, 39.91987]},
-            {"name": "Istanbul", "coordinates": [28.94966, 41.01384]}
+            {"id": "almaty", "name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"id": "bishkek", "name": "Bishkek", "coordinates": [74.59, 42.87]},
+            {"id": "tashkent", "name": "Tashkent", "coordinates": [69.21627, 41.26465]},
+            {"id": "ashgabat", "name": "Ashgabat", "coordinates": [58.38333, 37.95]},
+            {"id": "tehran", "name": "Tehran", "coordinates": [51.42151, 35.69439]},
+            {"id": "ankara", "name": "Ankara", "coordinates": [32.85427, 39.91987]},
+            {"id": "istanbul", "name": "Istanbul", "coordinates": [28.94966, 41.01384]}
           ]
         },
         {
           "name": "Persian Gulf branch",
           "waypoints": [
-            {"name": "Tehran", "coordinates": [51.42151, 35.69439]},
-            {"name": "Bandar Abbas", "coordinates": [56.2808, 27.1865]}
+            {"id": "tehran", "name": "Tehran", "coordinates": [51.42151, 35.69439]},
+            {"id": "bandar_abbas", "name": "Bandar Abbas", "coordinates": [56.2808, 27.1865]}
           ]
         }
       ]
@@ -1023,23 +1023,23 @@
         {
           "name": "Kunming–Singapore spine",
           "waypoints": [
-            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
-            {"name": "Mohan", "coordinates": [101.678, 21.193]},
-            {"name": "Boten", "coordinates": [101.67, 21.184]},
-            {"name": "Vientiane", "coordinates": [102.6, 17.96667]},
-            {"name": "Bangkok", "coordinates": [100.50144, 13.75398]},
-            {"name": "Kuala Lumpur", "coordinates": [101.68653, 3.1412]},
-            {"name": "Singapore", "coordinates": [103.85007, 1.28967]}
+            {"id": "kunming", "name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"id": "mohan", "name": "Mohan", "coordinates": [101.678, 21.193]},
+            {"id": "boten", "name": "Boten", "coordinates": [101.67, 21.184]},
+            {"id": "vientiane", "name": "Vientiane", "coordinates": [102.6, 17.96667]},
+            {"id": "bangkok", "name": "Bangkok", "coordinates": [100.50144, 13.75398]},
+            {"id": "kuala_lumpur", "name": "Kuala Lumpur", "coordinates": [101.68653, 3.1412]},
+            {"id": "singapore", "name": "Singapore", "coordinates": [103.85007, 1.28967]}
           ]
         },
         {
           "name": "Vietnam–Cambodia branch",
           "waypoints": [
-            {"name": "Nanning", "coordinates": [108.31667, 22.81667]},
-            {"name": "Hanoi", "coordinates": [105.84117, 21.0245]},
-            {"name": "Ho Chi Minh City", "coordinates": [106.62965, 10.82302]},
-            {"name": "Phnom Penh", "coordinates": [104.91601, 11.56245]},
-            {"name": "Bangkok", "coordinates": [100.50144, 13.75398]}
+            {"id": "nanning", "name": "Nanning", "coordinates": [108.31667, 22.81667]},
+            {"id": "hanoi", "name": "Hanoi", "coordinates": [105.84117, 21.0245]},
+            {"id": "ho_chi_minh_city", "name": "Ho Chi Minh City", "coordinates": [106.62965, 10.82302]},
+            {"id": "phnom_penh", "name": "Phnom Penh", "coordinates": [104.91601, 11.56245]},
+            {"id": "bangkok", "name": "Bangkok", "coordinates": [100.50144, 13.75398]}
           ]
         }
       ]
@@ -1054,10 +1054,10 @@
         {
           "name": "eastern and central connection",
           "waypoints": [
-            {"name": "Kashgar", "coordinates": [75.98675, 39.46718]},
-            {"name": "Khunjerab Pass", "coordinates": [75.4306, 36.8497]},
-            {"name": "Islamabad", "coordinates": [73.04329, 33.72148]},
-            {"name": "Lahore", "coordinates": [74.35071, 31.558]},
+            {"id": "kashgar", "name": "Kashgar", "coordinates": [75.98675, 39.46718]},
+            {"id": "khunjerab_pass", "name": "Khunjerab Pass", "coordinates": [75.4306, 36.8497]},
+            {"id": "islamabad", "name": "Islamabad", "coordinates": [73.04329, 33.72148]},
+            {"id": "lahore", "name": "Lahore", "coordinates": [74.35071, 31.558]},
             {"name": "Karachi Port", "node_id": "karachi_port", "coordinates": [66.98333333, 24.81666667]},
             {"name": "Port Qasim", "node_id": "port_qasim", "coordinates": [67.3333, 24.7667]}
           ]
@@ -1065,8 +1065,8 @@
         {
           "name": "western connection to Gwadar",
           "waypoints": [
-            {"name": "Islamabad", "coordinates": [73.04329, 33.72148]},
-            {"name": "Quetta", "coordinates": [67.00141, 30.18414]},
+            {"id": "islamabad", "name": "Islamabad", "coordinates": [73.04329, 33.72148]},
+            {"id": "quetta", "name": "Quetta", "coordinates": [67.00141, 30.18414]},
             {"name": "Gwadar Port", "node_id": "gwadar_port", "coordinates": [62.3394618, 25.1085929]}
           ]
         }
@@ -1082,12 +1082,12 @@
         {
           "name": "K2K representative route",
           "waypoints": [
-            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
-            {"name": "Ruili", "coordinates": [97.86499, 24.00139]},
-            {"name": "Muse", "coordinates": [97.904, 23.986]},
-            {"name": "Mandalay", "coordinates": [96.08359, 21.97473]},
-            {"name": "Dhaka", "coordinates": [90.40744, 23.7104]},
-            {"name": "Kolkata", "coordinates": [88.36304, 22.56263]}
+            {"id": "kunming", "name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"id": "ruili", "name": "Ruili", "coordinates": [97.86499, 24.00139]},
+            {"id": "muse", "name": "Muse", "coordinates": [97.904, 23.986]},
+            {"id": "mandalay", "name": "Mandalay", "coordinates": [96.08359, 21.97473]},
+            {"id": "dhaka", "name": "Dhaka", "coordinates": [90.40744, 23.7104]},
+            {"id": "kolkata", "name": "Kolkata", "coordinates": [88.36304, 22.56263]}
           ]
         }
       ],
@@ -1103,22 +1103,22 @@
         {
           "name": "Indian Ocean–Mediterranean representative route",
           "waypoints": [
-            {"name": "Shanghai", "coordinates": [121.45806, 31.22222]},
-            {"name": "Shenzhen", "coordinates": [114.0683, 22.54554]},
-            {"name": "Singapore", "coordinates": [103.85007, 1.28967]},
+            {"id": "shanghai", "name": "Shanghai", "coordinates": [121.45806, 31.22222]},
+            {"id": "shenzhen", "name": "Shenzhen", "coordinates": [114.0683, 22.54554]},
+            {"id": "singapore", "name": "Singapore", "coordinates": [103.85007, 1.28967]},
             {"name": "Colombo CICT", "node_id": "colombo_cict", "coordinates": [79.832778, 6.945556]},
             {"name": "Doraleh Multipurpose Port", "node_id": "doraleh_multipurpose_port", "coordinates": [43.0694209, 11.5963443]},
-            {"name": "Suez", "coordinates": [32.52627, 29.97371]},
+            {"id": "suez", "name": "Suez", "coordinates": [32.52627, 29.97371]},
             {"name": "Port of Piraeus", "node_id": "port_of_piraeus", "coordinates": [23.6167, 37.9333]},
-            {"name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
+            {"id": "rotterdam", "name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
           ]
         },
         {
           "name": "South Pacific representative branch",
           "waypoints": [
-            {"name": "Shenzhen", "coordinates": [114.0683, 22.54554]},
-            {"name": "Port Moresby", "coordinates": [147.15089, -9.47723]},
-            {"name": "Suva", "coordinates": [178.42531, -18.13683]}
+            {"id": "shenzhen", "name": "Shenzhen", "coordinates": [114.0683, 22.54554]},
+            {"id": "port_moresby", "name": "Port Moresby", "coordinates": [147.15089, -9.47723]},
+            {"id": "suva", "name": "Suva", "coordinates": [178.42531, -18.13683]}
           ]
         }
       ],
@@ -1136,10 +1136,10 @@
           "waypoints": [
             {"name": "Xi’an International Port", "node_id": "xian_international_port", "coordinates": [109.0635583, 34.4122285]},
             {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
-            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
-            {"name": "Astana", "coordinates": [71.44598, 51.1801]},
-            {"name": "Moscow", "coordinates": [37.61781, 55.75204]},
-            {"name": "Brest", "coordinates": [23.71749, 52.10894]},
+            {"id": "almaty", "name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"id": "astana", "name": "Astana", "coordinates": [71.44598, 51.1801]},
+            {"id": "moscow", "name": "Moscow", "coordinates": [37.61781, 55.75204]},
+            {"id": "brest", "name": "Brest", "coordinates": [23.71749, 52.10894]},
             {"name": "Małaszewicze", "node_id": "malaszewicze_logistics_hub", "coordinates": [23.5310557, 52.0240425]},
             {"name": "Duisburg", "node_id": "duisburg_inland_port", "coordinates": [6.75, 51.4667]}
           ]
@@ -1159,13 +1159,13 @@
           "waypoints": [
             {"name": "Xi’an International Port", "node_id": "xian_international_port", "coordinates": [109.0635583, 34.4122285]},
             {"name": "Khorgos Gateway", "node_id": "khorgos_gateway_dry_port", "coordinates": [80.2440642, 44.1971118]},
-            {"name": "Almaty", "coordinates": [76.9115, 43.25249]},
-            {"name": "Aktau", "coordinates": [51.17392, 43.66105]},
-            {"name": "Baku", "coordinates": [49.89201, 40.37767]},
-            {"name": "Tbilisi", "coordinates": [44.83412, 41.69143]},
-            {"name": "Kars", "coordinates": [43.08548, 40.59825]},
-            {"name": "Istanbul", "coordinates": [28.94966, 41.01384]},
-            {"name": "Constanța", "coordinates": [28.63432, 44.18073]}
+            {"id": "almaty", "name": "Almaty", "coordinates": [76.9115, 43.25249]},
+            {"id": "aktau", "name": "Aktau", "coordinates": [51.17392, 43.66105]},
+            {"id": "baku", "name": "Baku", "coordinates": [49.89201, 40.37767]},
+            {"id": "tbilisi", "name": "Tbilisi", "coordinates": [44.83412, 41.69143]},
+            {"id": "kars", "name": "Kars", "coordinates": [43.08548, 40.59825]},
+            {"id": "istanbul", "name": "Istanbul", "coordinates": [28.94966, 41.01384]},
+            {"id": "constanta", "name": "Constanța", "coordinates": [28.63432, 44.18073]}
           ]
         }
       ]
@@ -1180,18 +1180,18 @@
         {
           "name": "western China to Beibu Gulf",
           "waypoints": [
-            {"name": "Chongqing", "coordinates": [106.55771, 29.56026]},
-            {"name": "Guiyang", "coordinates": [106.71667, 26.58333]},
-            {"name": "Nanning", "coordinates": [108.31667, 22.81667]},
+            {"id": "chongqing", "name": "Chongqing", "coordinates": [106.55771, 29.56026]},
+            {"id": "guiyang", "name": "Guiyang", "coordinates": [106.71667, 26.58333]},
+            {"id": "nanning", "name": "Nanning", "coordinates": [108.31667, 22.81667]},
             {"name": "Qinzhou / Beibu Gulf Port", "node_id": "qinzhou_beibu_gulf_port", "coordinates": [108.5968678, 21.74141]},
-            {"name": "Singapore", "coordinates": [103.85007, 1.28967]}
+            {"id": "singapore", "name": "Singapore", "coordinates": [103.85007, 1.28967]}
           ]
         },
         {
           "name": "Chengdu feeder",
           "waypoints": [
-            {"name": "Chengdu", "coordinates": [104.06667, 30.66667]},
-            {"name": "Chongqing", "coordinates": [106.55771, 29.56026]}
+            {"id": "chengdu", "name": "Chengdu", "coordinates": [104.06667, 30.66667]},
+            {"id": "chongqing", "name": "Chongqing", "coordinates": [106.55771, 29.56026]}
           ]
         }
       ]
@@ -1206,16 +1206,16 @@
         {
           "name": "Kunming–Singapore spine",
           "waypoints": [
-            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
-            {"name": "Mohan", "coordinates": [101.678, 21.193]},
-            {"name": "Boten", "coordinates": [101.67, 21.184]},
-            {"name": "Luang Prabang", "coordinates": [102.1525, 19.8933]},
-            {"name": "Vientiane", "coordinates": [102.6, 17.96667]},
-            {"name": "Nong Khai", "coordinates": [102.742, 17.87847]},
-            {"name": "Bangkok", "coordinates": [100.50144, 13.75398]},
-            {"name": "Padang Besar", "coordinates": [100.3, 6.38333]},
-            {"name": "Kuala Lumpur", "coordinates": [101.68653, 3.1412]},
-            {"name": "Singapore", "coordinates": [103.85007, 1.28967]}
+            {"id": "kunming", "name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"id": "mohan", "name": "Mohan", "coordinates": [101.678, 21.193]},
+            {"id": "boten", "name": "Boten", "coordinates": [101.67, 21.184]},
+            {"id": "luang_prabang", "name": "Luang Prabang", "coordinates": [102.1525, 19.8933]},
+            {"id": "vientiane", "name": "Vientiane", "coordinates": [102.6, 17.96667]},
+            {"id": "nong_khai", "name": "Nong Khai", "coordinates": [102.742, 17.87847]},
+            {"id": "bangkok", "name": "Bangkok", "coordinates": [100.50144, 13.75398]},
+            {"id": "padang_besar", "name": "Padang Besar", "coordinates": [100.3, 6.38333]},
+            {"id": "kuala_lumpur", "name": "Kuala Lumpur", "coordinates": [101.68653, 3.1412]},
+            {"id": "singapore", "name": "Singapore", "coordinates": [103.85007, 1.28967]}
           ]
         }
       ],
@@ -1231,11 +1231,11 @@
         {
           "name": "planned CKU route",
           "waypoints": [
-            {"name": "Kashgar", "coordinates": [75.98675, 39.46718]},
-            {"name": "Torugart Pass", "coordinates": [75.3789, 40.5528]},
-            {"name": "Naryn", "coordinates": [75.9957, 41.4283]},
-            {"name": "Jalal-Abad", "coordinates": [72.99313, 40.94498]},
-            {"name": "Andijan", "coordinates": [72.35067, 40.78338]}
+            {"id": "kashgar", "name": "Kashgar", "coordinates": [75.98675, 39.46718]},
+            {"id": "torugart_pass", "name": "Torugart Pass", "coordinates": [75.3789, 40.5528]},
+            {"id": "naryn", "name": "Naryn", "coordinates": [75.9957, 41.4283]},
+            {"id": "jalal_abad", "name": "Jalal-Abad", "coordinates": [72.99313, 40.94498]},
+            {"id": "andijan", "name": "Andijan", "coordinates": [72.35067, 40.78338]}
           ]
         }
       ],
@@ -1251,10 +1251,10 @@
         {
           "name": "Kunming–Kyaukphyu spine",
           "waypoints": [
-            {"name": "Kunming", "coordinates": [102.71833, 25.03889]},
-            {"name": "Ruili", "coordinates": [97.86499, 24.00139]},
-            {"name": "Muse", "coordinates": [97.904, 23.986]},
-            {"name": "Mandalay", "coordinates": [96.08359, 21.97473]},
+            {"id": "kunming", "name": "Kunming", "coordinates": [102.71833, 25.03889]},
+            {"id": "ruili", "name": "Ruili", "coordinates": [97.86499, 24.00139]},
+            {"id": "muse", "name": "Muse", "coordinates": [97.904, 23.986]},
+            {"id": "mandalay", "name": "Mandalay", "coordinates": [96.08359, 21.97473]},
             {"name": "Kyaukphyu Deepwater Port", "node_id": "kyaukphyu_deepwater_port", "coordinates": [93.68444, 19.36444]}
           ]
         }
@@ -1271,10 +1271,10 @@
           "name": "representative northbound line",
           "waypoints": [
             {"name": "Port of Piraeus", "node_id": "port_of_piraeus", "coordinates": [23.6167, 37.9333]},
-            {"name": "Thessaloniki", "coordinates": [22.93493, 40.64072]},
-            {"name": "Skopje", "coordinates": [21.43141, 41.99646]},
-            {"name": "Belgrade", "coordinates": [20.46513, 44.80401]},
-            {"name": "Budapest", "coordinates": [19.04045, 47.49835]}
+            {"id": "thessaloniki", "name": "Thessaloniki", "coordinates": [22.93493, 40.64072]},
+            {"id": "skopje", "name": "Skopje", "coordinates": [21.43141, 41.99646]},
+            {"id": "belgrade", "name": "Belgrade", "coordinates": [20.46513, 44.80401]},
+            {"id": "budapest", "name": "Budapest", "coordinates": [19.04045, 47.49835]}
           ]
         }
       ]
@@ -1289,9 +1289,9 @@
         {
           "name": "railway",
           "waypoints": [
-            {"name": "Addis Ababa", "coordinates": [38.74689, 9.02497]},
-            {"name": "Adama", "coordinates": [39.26667, 8.55]},
-            {"name": "Dire Dawa", "coordinates": [41.86611, 9.59306]},
+            {"id": "addis_ababa", "name": "Addis Ababa", "coordinates": [38.74689, 9.02497]},
+            {"id": "adama", "name": "Adama", "coordinates": [39.26667, 8.55]},
+            {"id": "dire_dawa", "name": "Dire Dawa", "coordinates": [41.86611, 9.59306]},
             {"name": "Doraleh Multipurpose Port", "node_id": "doraleh_multipurpose_port", "coordinates": [43.0694209, 11.5963443]}
           ]
         }
@@ -1308,9 +1308,9 @@
           "name": "SGR representative line",
           "waypoints": [
             {"name": "Port of Mombasa", "node_id": "port_of_mombasa", "coordinates": [39.64, -4.05]},
-            {"name": "Voi", "coordinates": [38.55609, -3.39605]},
-            {"name": "Nairobi", "coordinates": [36.81667, -1.28333]},
-            {"name": "Naivasha", "coordinates": [36.43261, -0.71383]}
+            {"id": "voi", "name": "Voi", "coordinates": [38.55609, -3.39605]},
+            {"id": "nairobi", "name": "Nairobi", "coordinates": [36.81667, -1.28333]},
+            {"id": "naivasha", "name": "Naivasha", "coordinates": [36.43261, -0.71383]}
           ]
         }
       ]
@@ -1326,12 +1326,12 @@
           "name": "TAZARA to Copperbelt",
           "waypoints": [
             {"name": "Port of Dar es Salaam", "node_id": "port_of_dar_es_salaam", "coordinates": [39.2833, -6.8]},
-            {"name": "Morogoro", "coordinates": [37.66122, -6.82102]},
-            {"name": "Mbeya", "coordinates": [33.45, -8.9]},
-            {"name": "Tunduma", "coordinates": [32.76667, -9.3]},
-            {"name": "Nakonde", "coordinates": [32.745, -9.34213]},
-            {"name": "Kapiri Mposhi", "coordinates": [28.66985, -13.97147]},
-            {"name": "Ndola", "coordinates": [28.63659, -12.95867]}
+            {"id": "morogoro", "name": "Morogoro", "coordinates": [37.66122, -6.82102]},
+            {"id": "mbeya", "name": "Mbeya", "coordinates": [33.45, -8.9]},
+            {"id": "tunduma", "name": "Tunduma", "coordinates": [32.76667, -9.3]},
+            {"id": "nakonde", "name": "Nakonde", "coordinates": [32.745, -9.34213]},
+            {"id": "kapiri_mposhi", "name": "Kapiri Mposhi", "coordinates": [28.66985, -13.97147]},
+            {"id": "ndola", "name": "Ndola", "coordinates": [28.63659, -12.95867]}
           ]
         }
       ]
@@ -1347,12 +1347,12 @@
           "name": "representative east–west concept",
           "waypoints": [
             {"name": "Porto Sul", "node_id": "porto_sul", "coordinates": [-39.0710984, -14.6752373]},
-            {"name": "Caetité", "coordinates": [-42.475, -14.06944]},
-            {"name": "Figueirópolis", "coordinates": [-49.1742, -12.1317]},
-            {"name": "Brasília", "coordinates": [-47.92972, -15.77972]},
-            {"name": "Porto Velho", "coordinates": [-63.90389, -8.76194]},
-            {"name": "Rio Branco", "coordinates": [-67.81, -9.97472]},
-            {"name": "Pucallpa", "coordinates": [-74.55387, -8.37915]},
+            {"id": "caetite", "name": "Caetité", "coordinates": [-42.475, -14.06944]},
+            {"id": "figueiropolis", "name": "Figueirópolis", "coordinates": [-49.1742, -12.1317]},
+            {"id": "brasilia", "name": "Brasília", "coordinates": [-47.92972, -15.77972]},
+            {"id": "porto_velho", "name": "Porto Velho", "coordinates": [-63.90389, -8.76194]},
+            {"id": "rio_branco", "name": "Rio Branco", "coordinates": [-67.81, -9.97472]},
+            {"id": "pucallpa", "name": "Pucallpa", "coordinates": [-74.55387, -8.37915]},
             {"name": "Port of Chancay", "node_id": "port_of_chancay", "coordinates": [-77.2760411, -11.5922407]}
           ]
         }
@@ -1369,28 +1369,28 @@
         {
           "name": "Asia to date line",
           "waypoints": [
-            {"name": "Dalian", "coordinates": [121.60222, 38.91222]},
-            {"name": "Sea of Japan approach", "coordinates": [140.0, 42.0]},
-            {"name": "North Pacific approach", "coordinates": [160.0, 50.0]},
-            {"name": "Date line east side", "coordinates": [179.8, 65.8]}
+            {"id": "dalian", "name": "Dalian", "coordinates": [121.60222, 38.91222]},
+            {"id": "sea_of_japan_approach", "name": "Sea of Japan approach", "coordinates": [140.0, 42.0]},
+            {"id": "north_pacific_approach", "name": "North Pacific approach", "coordinates": [160.0, 50.0]},
+            {"id": "date_line_east_side", "name": "Date line east side", "coordinates": [179.8, 65.8]}
           ]
         },
         {
           "name": "Bering Strait date-line crossing",
           "waypoints": [
-            {"name": "Date line west side", "coordinates": [-179.8, 65.8]},
-            {"name": "Bering Strait", "coordinates": [-169.0, 65.9]},
-            {"name": "Arctic date line west side", "coordinates": [-179.8, 67.0]}
+            {"id": "date_line_west_side", "name": "Date line west side", "coordinates": [-179.8, 65.8]},
+            {"id": "bering_strait", "name": "Bering Strait", "coordinates": [-169.0, 65.9]},
+            {"id": "arctic_date_line_west_side", "name": "Arctic date line west side", "coordinates": [-179.8, 67.0]}
           ]
         },
         {
           "name": "Russian Arctic to Europe",
           "waypoints": [
-            {"name": "Arctic date line east side", "coordinates": [179.8, 67.0]},
-            {"name": "Pevek", "coordinates": [170.3133, 69.7008]},
-            {"name": "Sabetta", "coordinates": [72.072, 71.273]},
-            {"name": "Murmansk", "coordinates": [33.09922, 68.96778]},
-            {"name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
+            {"id": "arctic_date_line_east_side", "name": "Arctic date line east side", "coordinates": [179.8, 67.0]},
+            {"id": "pevek", "name": "Pevek", "coordinates": [170.3133, 69.7008]},
+            {"id": "sabetta", "name": "Sabetta", "coordinates": [72.072, 71.273]},
+            {"id": "murmansk", "name": "Murmansk", "coordinates": [33.09922, 68.96778]},
+            {"id": "rotterdam", "name": "Rotterdam", "coordinates": [4.47917, 51.9225]}
           ]
         }
       ],
@@ -1454,9 +1454,9 @@
       "name": "Suez Canal",
       "geometry_type": "LineString",
       "waypoints": [
-        {"name": "Port Said entrance", "coordinates": [32.3019, 31.2653]},
-        {"name": "Great Bitter Lake area", "coordinates": [32.35, 30.46]},
-        {"name": "Suez entrance", "coordinates": [32.52627, 29.97371]}
+        {"id": "port_said_entrance", "name": "Port Said entrance", "coordinates": [32.3019, 31.2653]},
+        {"id": "great_bitter_lake_area", "name": "Great Bitter Lake area", "coordinates": [32.35, 30.46]},
+        {"id": "suez_entrance", "name": "Suez entrance", "coordinates": [32.52627, 29.97371]}
       ],
       "coordinate_precision": "schematic_waterway_line",
       "linked_corridor_ids": ["maritime_silk_road"]
@@ -1467,8 +1467,8 @@
       "name": "Bosporus",
       "geometry_type": "LineString",
       "waypoints": [
-        {"name": "Black Sea entrance", "coordinates": [29.13, 41.23]},
-        {"name": "Sea of Marmara entrance", "coordinates": [28.98, 40.99]}
+        {"id": "black_sea_entrance", "name": "Black Sea entrance", "coordinates": [29.13, 41.23]},
+        {"id": "sea_of_marmara_entrance", "name": "Sea of Marmara entrance", "coordinates": [28.98, 40.99]}
       ],
       "coordinate_precision": "schematic_waterway_line",
       "linked_corridor_ids": ["trans_caspian_middle_corridor", "maritime_silk_road"]
@@ -1479,8 +1479,8 @@
       "name": "Dardanelles",
       "geometry_type": "LineString",
       "waypoints": [
-        {"name": "Sea of Marmara entrance", "coordinates": [26.7, 40.4]},
-        {"name": "Aegean Sea entrance", "coordinates": [26.18, 40.04]}
+        {"id": "sea_of_marmara_entrance", "name": "Sea of Marmara entrance", "coordinates": [26.7, 40.4]},
+        {"id": "aegean_sea_entrance", "name": "Aegean Sea entrance", "coordinates": [26.18, 40.04]}
       ],
       "coordinate_precision": "schematic_waterway_line",
       "linked_corridor_ids": ["trans_caspian_middle_corridor", "maritime_silk_road"]
@@ -1501,9 +1501,9 @@
       "name": "Panama Canal",
       "geometry_type": "LineString",
       "waypoints": [
-        {"name": "Colón entrance", "coordinates": [-79.9, 9.36]},
-        {"name": "Gatún Lake", "coordinates": [-79.92, 9.26]},
-        {"name": "Panama City entrance", "coordinates": [-79.56, 8.95]}
+        {"id": "colon_entrance", "name": "Colón entrance", "coordinates": [-79.9, 9.36]},
+        {"id": "gatun_lake", "name": "Gatún Lake", "coordinates": [-79.92, 9.26]},
+        {"id": "panama_city_entrance", "name": "Panama City entrance", "coordinates": [-79.56, 8.95]}
       ],
       "coordinate_precision": "schematic_waterway_line",
       "linked_corridor_ids": ["maritime_silk_road"]
@@ -1534,9 +1534,9 @@
       "name": "Major South China Sea Approaches",
       "geometry_type": "MultiPoint",
       "waypoints": [
-        {"name": "Luzon Strait approach", "coordinates": [121.0, 20.5]},
-        {"name": "Natuna approach", "coordinates": [108.5, 6.0]},
-        {"name": "Singapore Strait approach", "coordinates": [104.0, 1.2]}
+        {"id": "luzon_strait_approach", "name": "Luzon Strait approach", "coordinates": [121.0, 20.5]},
+        {"id": "natuna_approach", "name": "Natuna approach", "coordinates": [108.5, 6.0]},
+        {"id": "singapore_strait_approach", "name": "Singapore Strait approach", "coordinates": [104.0, 1.2]}
       ],
       "coordinate_precision": "representative_route_points",
       "linked_corridor_ids": ["maritime_silk_road", "china_indochina_peninsula", "china_laos_pan_asian"]
@@ -1547,10 +1547,10 @@
       "name": "Bering Strait / Northern Sea Route Overlay",
       "geometry_type": "MultiPoint",
       "waypoints": [
-        {"name": "Bering Strait", "coordinates": [-169.0, 65.9]},
-        {"name": "Pevek", "coordinates": [170.3133, 69.7008]},
-        {"name": "Sabetta", "coordinates": [72.072, 71.273]},
-        {"name": "Murmansk", "coordinates": [33.09922, 68.96778]}
+        {"id": "bering_strait", "name": "Bering Strait", "coordinates": [-169.0, 65.9]},
+        {"id": "pevek", "name": "Pevek", "coordinates": [170.3133, 69.7008]},
+        {"id": "sabetta", "name": "Sabetta", "coordinates": [72.072, 71.273]},
+        {"id": "murmansk", "name": "Murmansk", "coordinates": [33.09922, 68.96778]}
       ],
       "coordinate_precision": "schematic_route_control_points",
       "linked_corridor_ids": ["polar_silk_road_nsr"],

@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import re
+import sys
+import time
 from datetime import datetime, timezone
 from itertools import islice
 from pathlib import Path
@@ -19,6 +22,7 @@ BASE_URL = "https://maps.googleapis.com/maps/api/staticmap"
 DEFAULT_INVENTORY_PATH = Path(__file__).with_name(
     "infra_timelapse_ports_corridors.json"
 )
+IDENTIFIER_PATTERN = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*\Z")
 
 
 def config_value(name: str, environment_name: str, default: Any) -> Any:
@@ -31,12 +35,45 @@ def config_value(name: str, environment_name: str, default: Any) -> Any:
 API_KEY = str(config_value("API_KEY", "GOOGLE_MAPS_API_KEY", ""))
 OUTPUT_DIR = Path(config_value("OUTPUT_DIR", "OUTPUT_DIR", "images"))
 IMAGE_SIZE = str(config_value("IMAGE_SIZE", "IMAGE_SIZE", "640x640"))
+IMAGE_SCALE = int(config_value("IMAGE_SCALE", "IMAGE_SCALE", 2))
 MAP_TYPE = str(config_value("MAP_TYPE", "MAP_TYPE", "satellite"))
-PORT_ZOOM = int(config_value("PORT_ZOOM", "PORT_ZOOM", 14))
-CORRIDOR_ZOOM = int(config_value("CORRIDOR_ZOOM", "CORRIDOR_ZOOM", 11))
+PORT_ZOOM = int(config_value("PORT_ZOOM", "PORT_ZOOM", 15))
+CORRIDOR_ZOOM = int(config_value("CORRIDOR_ZOOM", "CORRIDOR_ZOOM", 12))
 METADATA_FILE = Path(
     config_value("METADATA_FILE", "METADATA_FILE", "metadata.json")
 )
+CAPTURE_REPORT_FILE = Path(
+    config_value(
+        "CAPTURE_REPORT_FILE", "CAPTURE_REPORT_FILE", "capture-report.json"
+    )
+)
+MAX_FETCH_ATTEMPTS = int(
+    config_value("MAX_FETCH_ATTEMPTS", "MAX_FETCH_ATTEMPTS", 4)
+)
+RETRY_BACKOFF_SECONDS = float(
+    config_value("RETRY_BACKOFF_SECONDS", "RETRY_BACKOFF_SECONDS", 1)
+)
+RETRY_MAX_BACKOFF_SECONDS = float(
+    config_value(
+        "RETRY_MAX_BACKOFF_SECONDS", "RETRY_MAX_BACKOFF_SECONDS", 30
+    )
+)
+RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+class SatelliteImageFetchError(RuntimeError):
+    """A sanitized request failure that never includes the Maps API key."""
+
+    def __init__(
+        self, target_id: str, attempts: int, status_code: int | None
+    ) -> None:
+        detail = f"HTTP {status_code}" if status_code else "network error"
+        super().__init__(
+            f"Static Maps request for {target_id!r} failed after "
+            f"{attempts} attempt(s): {detail}"
+        )
+        self.attempts = attempts
+        self.status_code = status_code
 
 
 def load_inventory(path: Path) -> dict[str, Any]:
@@ -65,10 +102,21 @@ def parse_coordinates(value: Any, context: str) -> tuple[float, float]:
     return latitude, longitude
 
 
+def validate_identifier(value: Any, context: str) -> str:
+    """Return an ASCII machine identifier or raise a useful validation error."""
+    identifier = str(value or "")
+    if not IDENTIFIER_PATTERN.fullmatch(identifier):
+        raise ValueError(
+            f"{context} must be a lowercase ASCII identifier using "
+            "letters, numbers, and single underscores"
+        )
+    return identifier
+
+
 def iter_ports(inventory: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """Yield one satellite-image target for each port or logistics node."""
     for port in inventory["ports_and_logistics_nodes"]:
-        port_id = str(port["id"])
+        port_id = validate_identifier(port.get("id"), "port id")
         latitude, longitude = parse_coordinates(
             port.get("coordinates"), f"port {port_id!r} coordinates"
         )
@@ -97,7 +145,7 @@ def iter_corridor_waypoints(
 ) -> Iterator[dict[str, Any]]:
     """Yield every ordered waypoint from every corridor route segment."""
     for corridor in corridors:
-        corridor_id = str(corridor["id"])
+        corridor_id = validate_identifier(corridor.get("id"), "corridor id")
         corridor_name = str(corridor["name"])
         route_segments = corridor.get("route_segments")
         if not isinstance(route_segments, list):
@@ -125,11 +173,19 @@ def iter_corridor_waypoints(
                         f"waypoint {waypoint_index} coordinates"
                     ),
                 )
-                waypoint_id = (
-                    f"{corridor_id}-{segment_index:02d}-{waypoint_index:03d}"
+                waypoint_identifier = validate_identifier(
+                    waypoint.get("node_id") or waypoint.get("id"),
+                    (
+                        f"corridor {corridor_id!r} segment {segment_index} "
+                        f"waypoint {waypoint_index} identifier"
+                    ),
+                )
+                target_id = (
+                    f"{corridor_id}-{segment_index:02d}-"
+                    f"{waypoint_index:03d}-{waypoint_identifier}"
                 )
                 yield {
-                    "id": waypoint_id,
+                    "id": target_id,
                     "target_type": "corridor_waypoint",
                     "name": f"{corridor_name} — {waypoint_name}",
                     "latitude": latitude,
@@ -139,13 +195,14 @@ def iter_corridor_waypoints(
                         "corridors",
                         corridor_id,
                         f"segment-{segment_index:02d}",
-                        f"{waypoint_index:03d}-{slugify(waypoint_name)}",
+                        f"{waypoint_index:03d}-{waypoint_identifier}",
                     ),
                     "corridor_id": corridor_id,
                     "corridor_name": corridor_name,
                     "segment_index": segment_index,
                     "segment_name": segment_name,
                     "waypoint_index": waypoint_index,
+                    "waypoint_id": waypoint_identifier,
                     "waypoint_name": waypoint_name,
                     "node_id": waypoint.get("node_id"),
                 }
@@ -164,13 +221,13 @@ def iter_targets(
         yield from iter_corridor_waypoints(iter_corridors(inventory))
 
 
-def slugify(value: str) -> str:
-    """Create a stable, filesystem-safe path component."""
-    slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
-    return slug or "waypoint"
-
-
-def fetch_satellite_image(target: dict[str, Any]) -> Path:
+def fetch_satellite_image(
+    target: dict[str, Any],
+    *,
+    request_get: Any = None,
+    sleep: Any = time.sleep,
+    random_uniform: Any = random.uniform,
+) -> Path:
     """Fetch one Google Static Maps satellite image for a monitoring target."""
     if not API_KEY:
         raise RuntimeError(
@@ -193,12 +250,55 @@ def fetch_satellite_image(target: dict[str, Any]) -> Path:
         "center": f'{target["latitude"]},{target["longitude"]}',
         "zoom": target["zoom"],
         "size": IMAGE_SIZE,
+        "scale": IMAGE_SCALE,
         "maptype": MAP_TYPE,
         "key": API_KEY,
     }
 
-    response = requests.get(BASE_URL, params=params, timeout=30)
-    response.raise_for_status()
+    if MAX_FETCH_ATTEMPTS < 1:
+        raise RuntimeError("MAX_FETCH_ATTEMPTS must be at least 1")
+
+    get = request_get or requests.get
+    for attempt in range(1, MAX_FETCH_ATTEMPTS + 1):
+        try:
+            response = get(BASE_URL, params=params, timeout=30)
+            status_code = response.status_code
+        except requests.RequestException:
+            response = None
+            status_code = None
+
+        retryable = (
+            status_code is None or status_code in RETRYABLE_STATUS_CODES
+        )
+        if response is not None and not retryable:
+            try:
+                response.raise_for_status()
+            except requests.RequestException:
+                raise SatelliteImageFetchError(
+                    target["id"], attempt, status_code
+                ) from None
+            break
+
+        if response is not None and status_code < 400:
+            break
+
+        if not retryable or attempt == MAX_FETCH_ATTEMPTS:
+            raise SatelliteImageFetchError(
+                target["id"], attempt, status_code
+            ) from None
+
+        delay = min(
+            RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)),
+            RETRY_MAX_BACKOFF_SECONDS,
+        ) + random_uniform(0, RETRY_BACKOFF_SECONDS)
+        detail = f"HTTP {status_code}" if status_code else "network error"
+        print(
+            f"Retrying {target['id']} after {detail}; "
+            f"attempt {attempt + 1}/{MAX_FETCH_ATTEMPTS} in {delay:.1f}s",
+            file=sys.stderr,
+        )
+        sleep(delay)
+
     filepath.write_bytes(response.content)
     return filepath
 
@@ -232,6 +332,35 @@ def log_metadata(target: dict[str, Any], filepath: Path) -> None:
         metadata_output.write("\n")
 
 
+def write_capture_report(
+    report_file: Path,
+    requested_count: int,
+    success_count: int,
+    failures: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Write the capture outcome consumed by the Cloud Run uploader."""
+    if not failures:
+        status = "success"
+    elif success_count:
+        status = "partial_success"
+    else:
+        status = "failed"
+
+    report = {
+        "status": status,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "requested_count": requested_count,
+        "success_count": success_count,
+        "failure_count": len(failures),
+        "failures": failures,
+    }
+    report_file.parent.mkdir(parents=True, exist_ok=True)
+    with report_file.open("w", encoding="utf-8") as report_output:
+        json.dump(report, report_output, ensure_ascii=False, indent=2)
+        report_output.write("\n")
+    return report
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -261,6 +390,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List targets and coordinates without calling Google Maps",
     )
+    parser.add_argument(
+        "--report-file",
+        type=Path,
+        default=CAPTURE_REPORT_FILE,
+        help="Write a JSON capture report to this path",
+    )
     return parser
 
 
@@ -280,19 +415,46 @@ def main() -> None:
         targets = islice(targets, args.limit)
 
     action = "Would fetch" if args.dry_run else "Fetching"
-    processed = 0
-    for processed, target in enumerate(targets, start=1):
+    requested_count = 0
+    success_count = 0
+    failures: list[dict[str, Any]] = []
+    for requested_count, target in enumerate(targets, start=1):
         print(
-            f"[{processed}] {action} {target['target_type']}: "
+            f"[{requested_count}] {action} {target['target_type']}: "
             f"{target['name']} "
             f"({target['latitude']:.6f}, {target['longitude']:.6f})"
         )
         if args.dry_run:
             continue
-        image_path = fetch_satellite_image(target)
+        try:
+            image_path = fetch_satellite_image(target)
+        except SatelliteImageFetchError as error:
+            failure = {
+                "target_id": target["id"],
+                "target_type": target["target_type"],
+                "name": target["name"],
+                "status_code": error.status_code,
+                "attempts": error.attempts,
+            }
+            failures.append(failure)
+            print(f"Failed {target['id']}: {error}", file=sys.stderr)
+            continue
         log_metadata(target, image_path)
+        success_count += 1
 
-    print(f"Processed {processed} target(s).")
+    if args.dry_run:
+        print(f"Processed {requested_count} target(s).")
+        return
+
+    report = write_capture_report(
+        args.report_file, requested_count, success_count, failures
+    )
+    print(
+        f"Processed {requested_count} target(s): {success_count} succeeded, "
+        f"{len(failures)} failed ({report['status']})."
+    )
+    if requested_count and not success_count:
+        raise RuntimeError("Every satellite image request failed")
 
 
 if __name__ == "__main__":
