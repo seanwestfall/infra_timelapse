@@ -29,7 +29,7 @@ db-health:
 	$(PYTHON) scripts/db.py run db/tests/001_extension_health.sql
 
 db-validate:
-	$(PYTHON) scripts/db.py run db/tests/001_extension_health.sql db/tests/002_schema_constraints.sql db/tests/003_seed_invariants.sql db/tests/004_spatial_smoke.sql
+	$(PYTHON) scripts/db.py run db/tests/001_extension_health.sql db/tests/002_schema_constraints.sql db/tests/003_seed_invariants.sql db/tests/004_spatial_smoke.sql db/tests/007_verification_and_identity_guards.sql
 
 db-test-seed-replay:
 	$(PYTHON) scripts/db.py run db/tests/005_seed_replay_mutate.sql
@@ -41,7 +41,7 @@ db-test:
 	$(MAKE) db-migrate
 	$(MAKE) db-seed
 	$(MAKE) db-test-seed-replay
-	$(PYTHON) scripts/db.py run db/tests/001_extension_health.sql db/tests/002_schema_constraints.sql db/tests/003_seed_invariants.sql db/tests/004_spatial_smoke.sql
+	$(MAKE) db-validate
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v

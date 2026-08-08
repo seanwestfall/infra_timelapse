@@ -92,6 +92,10 @@ class BuildSeedTests(unittest.TestCase):
         first = build_seed.render_outputs(self.model)
         second = build_seed.render_outputs(build_seed.build_model())
         self.assertEqual(first, second)
+        self.assertNotIn(
+            "entity_kind = EXCLUDED.entity_kind",
+            first["002_entities_and_subtypes.sql"],
+        )
         self.assertEqual(
             set(first),
             {

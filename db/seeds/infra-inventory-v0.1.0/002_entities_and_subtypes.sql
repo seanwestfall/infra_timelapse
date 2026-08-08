@@ -105,9 +105,7 @@ INSERT INTO catalog.entities (entity_id, code, entity_kind, canonical_name, reco
     ('f07e6203-4087-57bf-97b1-e9b70fa4c552', 'prj-pbb-rail-buildout', 'project', 'Piraeus–Belgrade–Budapest Rail Buildout', 'draft'),
     ('21f61acd-d55f-53be-999b-f34ecac5bc7b', 'prj-porto-sul-development', 'project', 'Porto Sul Development', 'draft'),
     ('f088eff3-e108-5212-b7fb-9fa031d5e16f', 'prj-tazara-revitalization', 'project', 'TAZARA Revitalization', 'draft')
-ON CONFLICT (code) DO UPDATE SET
-    entity_kind = EXCLUDED.entity_kind,
-    canonical_name = EXCLUDED.canonical_name;
+ON CONFLICT (code) DO UPDATE SET canonical_name = EXCLUDED.canonical_name;
 INSERT INTO catalog.seed_release_entities (seed_version, entity_id) VALUES
     ('infra-inventory-v0.1.0', '0f238b33-a444-50b8-9d44-26941c8b1f2f'),
     ('infra-inventory-v0.1.0', '399ee36b-3db3-5687-9f7c-fc09e3c17dd3'),

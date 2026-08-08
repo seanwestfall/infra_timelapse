@@ -965,9 +965,7 @@ def render_entities_seed(model: dict[str, Any]) -> str:
             )
             for entity in model["entities"]
         ],
-        """ON CONFLICT (code) DO UPDATE SET
-    entity_kind = EXCLUDED.entity_kind,
-    canonical_name = EXCLUDED.canonical_name""",
+        "ON CONFLICT (code) DO UPDATE SET canonical_name = EXCLUDED.canonical_name",
     )
     release_entities = render_insert(
         "catalog.seed_release_entities",
