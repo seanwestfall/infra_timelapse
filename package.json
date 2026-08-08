@@ -1,0 +1,9 @@
+{
+  "name": "infra-timelapse-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bash deploy/build_web.sh",
+    "test": "node --test tests/test_pages_function.mjs"
+  }
+}

@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Infra Timelapse Explorer – MVP</title>
+<title>Infra Timelapse Explorer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="timelapse-index-url" content="https://storage.googleapis.com/infra-timelapse-infra-timelapse-images/index.json">
+<meta name="timelapse-index-url" content="/api/index">
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
@@ -172,14 +172,8 @@ function legacySlug(value) {
 }
 
 function browserUrl(value) {
-  if (!value) return "";
-  if (!value.startsWith("gs://")) return value;
-  const object = value.slice(5);
-  const slash = object.indexOf("/");
-  if (slash < 0) return "";
-  const bucket = object.slice(0, slash);
-  const name = object.slice(slash + 1).split("/").map(encodeURIComponent).join("/");
-  return `https://storage.googleapis.com/${bucket}/${name}`;
+  if (!value || value.startsWith("gs://")) return "";
+  return value;
 }
 
 function configuredAssetsBase() {
@@ -304,7 +298,7 @@ async function fetchJson(url) {
 function indexCandidates() {
   const queryUrl = new URLSearchParams(location.search).get("index");
   const configuredUrl = document.querySelector('meta[name="timelapse-index-url"]')?.content;
-  return [...new Set([queryUrl, configuredUrl, "./timelapse-index.json", "./index.json"].filter(Boolean))];
+  return [...new Set([queryUrl, configuredUrl, "./timelapse-index.json"].filter(Boolean))];
 }
 
 async function loadFirstIndex() {
@@ -535,7 +529,7 @@ async function initialize() {
     let inventoryError;
     let indexError;
     const [inventoryResult, indexResult] = await Promise.all([
-      fetchJson("../infra_timelapse_ports_corridors.json").catch((error) => {
+      fetchJson("./infra_timelapse_ports_corridors.json").catch((error) => {
         inventoryError = error;
         return null;
       }),
@@ -577,7 +571,7 @@ async function initialize() {
     message.textContent = error.message;
     const help = document.createElement("p");
     help.className = "mt-2 text-sm text-gray-300";
-    help.textContent = "Serve this repository over HTTP with its inventory file. To load captures locally, provide ?index=./timelapse-index.json&assets=../images/.";
+    help.textContent = "Serve the built web directory over HTTP. For local captures, provide ?index=./timelapse-index.json&assets=../images/.";
     $("target-info").replaceChildren(message, help);
     $("target-info").classList.remove("hidden");
   }

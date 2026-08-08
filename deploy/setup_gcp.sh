@@ -6,10 +6,12 @@ REGION="${REGION:-us-west1}"
 ARTIFACT_REPOSITORY="${ARTIFACT_REPOSITORY:-infra-timelapse}"
 IMAGE_NAME="${IMAGE_NAME:-capture}"
 JOB_NAME="${JOB_NAME:-infra-timelapse-capture}"
+INDEX_SERVICE_NAME="${INDEX_SERVICE_NAME:-infra-timelapse-index}"
 SCHEDULER_NAME="${SCHEDULER_NAME:-infra-timelapse-biweekly}"
 BUCKET_NAME="${BUCKET_NAME:-${PROJECT_ID}-infra-timelapse-images}"
 SECRET_NAME="${SECRET_NAME:-google-maps-api-key}"
 RUNTIME_SA_NAME="${RUNTIME_SA_NAME:-infra-timelapse-job}"
+INDEX_SA_NAME="${INDEX_SA_NAME:-infra-timelapse-index}"
 SCHEDULER_SA_NAME="${SCHEDULER_SA_NAME:-infra-timelapse-scheduler}"
 SCHEDULE="${SCHEDULE:-0 3 1,15 * *}"
 TIME_ZONE="${TIME_ZONE:-Pacific/Honolulu}"
@@ -22,6 +24,7 @@ fi
 
 PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 RUNTIME_SA="${RUNTIME_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+INDEX_SA="${INDEX_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SCHEDULER_SA="${SCHEDULER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:latest"
 RUN_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
@@ -36,10 +39,12 @@ Container image:     ${IMAGE_URI}
 Storage bucket:      gs://${BUCKET_NAME}
 Secret:              ${SECRET_NAME}
 Cloud Run job:       ${JOB_NAME}
+Capture read service: ${INDEX_SERVICE_NAME}
 Scheduler job:       ${SCHEDULER_NAME}
 Schedule:            ${SCHEDULE}
 Time zone:           ${TIME_ZONE}
 Runtime identity:    ${RUNTIME_SA}
+Read identity:       ${INDEX_SA}
 Scheduler identity:  ${SCHEDULER_SA}
 
 This will enable Google Cloud APIs, create or update resources, and add
@@ -81,7 +86,13 @@ if ! gcloud storage buckets describe "gs://${BUCKET_NAME}" \
     --project "${PROJECT_ID}"
 fi
 
-for service_account_name in "${RUNTIME_SA_NAME}" "${SCHEDULER_SA_NAME}"; do
+gcloud storage buckets update "gs://${BUCKET_NAME}" \
+  --uniform-bucket-level-access \
+  --public-access-prevention \
+  --project "${PROJECT_ID}"
+
+for service_account_name in \
+  "${RUNTIME_SA_NAME}" "${INDEX_SA_NAME}" "${SCHEDULER_SA_NAME}"; do
   if ! gcloud iam service-accounts describe \
     "${service_account_name}@${PROJECT_ID}.iam.gserviceaccount.com" \
     --project "${PROJECT_ID}" >/dev/null 2>&1; then
@@ -94,6 +105,11 @@ done
 gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
   --member "serviceAccount:${RUNTIME_SA}" \
   --role roles/storage.objectUser \
+  --project "${PROJECT_ID}"
+
+gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
+  --member "serviceAccount:${INDEX_SA}" \
+  --role roles/storage.objectViewer \
   --project "${PROJECT_ID}"
 
 if ! gcloud secrets describe "${SECRET_NAME}" \
@@ -130,13 +146,26 @@ gcloud run jobs deploy "${JOB_NAME}" \
   --image "${IMAGE_URI}" \
   --region "${REGION}" \
   --service-account "${RUNTIME_SA}" \
-  --set-env-vars "GCS_BUCKET=${BUCKET_NAME},CAPTURE_SCOPE=all" \
+  --set-env-vars "APP_MODE=job,GCS_BUCKET=${BUCKET_NAME},CAPTURE_SCOPE=all" \
   --set-secrets "GOOGLE_MAPS_API_KEY=${SECRET_NAME}:latest" \
   --tasks 1 \
   --max-retries 2 \
   --task-timeout 30m \
   --memory 512Mi \
   --cpu 1 \
+  --project "${PROJECT_ID}"
+
+gcloud run deploy "${INDEX_SERVICE_NAME}" \
+  --image "${IMAGE_URI}" \
+  --region "${REGION}" \
+  --service-account "${INDEX_SA}" \
+  --set-env-vars "APP_MODE=api,GCS_BUCKET=${BUCKET_NAME}" \
+  --no-invoker-iam-check \
+  --memory 512Mi \
+  --cpu 1 \
+  --concurrency 8 \
+  --min 0 \
+  --max 2 \
   --project "${PROJECT_ID}"
 
 gcloud run jobs add-iam-policy-binding "${JOB_NAME}" \
@@ -168,6 +197,10 @@ else
     --project "${PROJECT_ID}"
 fi
 
+INDEX_SERVICE_URL="$(gcloud run services describe "${INDEX_SERVICE_NAME}" \
+  --region "${REGION}" --project "${PROJECT_ID}" \
+  --format='value(status.url)')"
+
 cat <<EOF
 
 Deployment complete. The schedule is configured but no capture was started.
@@ -177,4 +210,10 @@ Test once:
 
 Inspect captures:
   gcloud storage ls gs://${BUCKET_NAME}/manifests/
+
+Capture API:
+  ${INDEX_SERVICE_URL}/api/index
+
+Set the Cloudflare Pages runtime variable API_BASE_URL to:
+  ${INDEX_SERVICE_URL}
 EOF
