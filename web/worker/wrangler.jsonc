@@ -6,7 +6,7 @@
   "workers_dev": true,
   "preview_urls": true,
   "vars": {
-    "API_BASE_URL": "https://replace-with-cloud-run-service.run.app",
+    "API_BASE_URL": "if-api.acceler.workers.dev",
     "ALLOWED_ORIGINS": ""
   },
   "secrets": {
