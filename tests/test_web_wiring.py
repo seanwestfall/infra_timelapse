@@ -7,11 +7,17 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
 class WebWiringTests(unittest.TestCase):
-    def test_main_page_uses_same_origin_api_and_packaged_inventory(self):
+    def test_main_page_uses_worker_api_and_packaged_inventory(self):
         html = (REPOSITORY_ROOT / "web" / "public" / "index.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn('content="__TIMELAPSE_INDEX_URL__"', html)
+        self.assertIn(
+            'content="https://if-api.acceler.workers.dev/api/index"', html
+        )
+        self.assertIn(
+            "collectCaptures(indexResult.data, { index_url: indexResult.url })",
+            html,
+        )
         self.assertIn(
             'fetchJson("./infra_timelapse_ports_corridors.json")', html
         )
@@ -29,7 +35,9 @@ class WebWiringTests(unittest.TestCase):
         rendered = (REPOSITORY_ROOT / "dist" / "index.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn('content="/api/index"', rendered)
+        self.assertIn(
+            'content="https://if-api.acceler.workers.dev/api/index"', rendered
+        )
         self.assertNotIn("__TIMELAPSE_INDEX_URL__", rendered)
         self.assertTrue(
             (

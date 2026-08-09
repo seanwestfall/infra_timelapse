@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Infra Timelapse Explorer – MVP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="timelapse-index-url" content="__TIMELAPSE_INDEX_URL__">
+<meta name="timelapse-index-url" content="https://if-api.acceler.workers.dev/api/index">
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
@@ -164,10 +164,15 @@ function legacySlug(value) {
   return String(value || "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "waypoint";
 }
 
-function browserUrl(value) {
+function browserUrl(value, baseUrl = document.baseURI) {
   if (!value) return "";
   if (value.startsWith("gs://")) return "";
-  return value;
+  try {
+    const url = new URL(value, new URL(baseUrl, document.baseURI));
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function configuredAssetsBase() {
@@ -201,7 +206,8 @@ function normalizeCapture(record, inherited = {}) {
   const targetId = pathTargetId(relativePath) || merged.target_id || merged.targetId;
   const remoteUrl = browserUrl(
     merged.image_url || merged.imageUrl || merged.public_url || merged.publicUrl ||
-    merged.https_url || merged.url || merged.object
+    merged.https_url || merged.url || merged.object,
+    merged.index_url
   );
   const imageUrls = localImageUrls(relativePath, targetId);
   if (!imageUrls.length && remoteUrl) imageUrls.push(remoteUrl);
@@ -482,7 +488,7 @@ async function initialize() {
 
   try {
     const indexResult = await loadFirstIndex();
-    const captures = collectCaptures(indexResult.data).filter((capture, index, all) =>
+    const captures = collectCaptures(indexResult.data, { index_url: indexResult.url }).filter((capture, index, all) =>
       all.findIndex((candidate) => candidate.targetId === capture.targetId && candidate.imageUrl === capture.imageUrl) === index
     );
     captures.forEach((capture) => {
