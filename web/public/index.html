@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Infra Timelapse Explorer – MVP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="timelapse-index-url" content="https://storage.googleapis.com/infra-timelapse-infra-timelapse-images/index.json">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- MapLibre GL JS -->
+<link href="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.js"></script>
+<style>
+  body { margin:0; font-family:system-ui, sans-serif; }
+  #map { position:relative; min-width:0; height:100%; }
+  .sidebar { max-width:400px; width:100%; background:#1f2937; color:#fff; overflow-y:auto; }
+  .sidebar-header { padding:1rem; border-bottom:1px solid #374151; }
+  .sidebar-content { padding:1rem; }
+  .hidden { display:none; }
+  .btn { padding:.35rem .75rem; border-radius:.375rem; background:#0d9488; color:#fff; }
+  .btn:hover:not(:disabled) { background:#14b8a6; }
+  .btn:focus-visible { outline:2px solid #5eead4; outline-offset:2px; }
+  .btn:disabled { background:#4b5563; color:#d1d5db; cursor:not-allowed; }
+  .playback-speed button { margin:0 .15rem; }
+  .playback-speed button[aria-pressed="true"] { background:#14b8a6; box-shadow:0 0 0 2px #5eead4 inset; }
+  .image-stage { min-height:240px; background:#111827; border-radius:.5rem; overflow:hidden; }
+  .image-stage img { min-height:240px; max-height:58vh; }
+  @media (max-width:767px) {
+    #map { min-height:45vh; }
+    .sidebar { position:fixed; z-index:10; left:0; right:0; bottom:0; max-width:none; max-height:65vh; border-radius:1rem 1rem 0 0; }
+  }
+</style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+<!-- Top navigation -->
+<header class="flex items-center justify-between p-4 bg-gray-800">
+  <h1 class="text-xl font-semibold">Infra Timelapse Explorer</h1>
+  <input id="search" type="text" placeholder="Search…" class="px-2 py-1 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+  <span id="status" class="text-sm text-gray-400" role="status">Loading captures…</span>
+</header>
+
+<div class="flex h-[calc(100vh-4rem)]">
+  <!-- Map -->
+  <div id="map" class="flex-1"></div>
+
+  <!-- Sidebar (hidden on mobile, toggled via button) -->
+  <aside id="sidebar" class="sidebar hidden md:block">
+    <div class="sidebar-header flex items-center justify-between">
+      <h2 id="target-name" class="text-lg font-medium">Select a target</h2>
+      <button id="close-sidebar" class="md:hidden btn">✕</button>
+    </div>
+    <div class="sidebar-content">
+      <label for="target-select" class="block text-sm font-medium mb-1">Location</label>
+      <select id="target-select" class="w-full mb-4 px-2 py-2 rounded bg-gray-700 text-white">
+        <option value="">Loading locations…</option>
+      </select>
+
+      <section id="target-info" class="mb-4 hidden">
+        <p><strong>Type:</strong> <span id="target-type"></span></p>
+        <p><strong>Country:</strong> <span id="target-country"></span></p>
+        <p><strong>Coordinates:</strong> <span id="target-coords"></span></p>
+      </section>
+
+      <section id="viewer-section" class="hidden">
+        <div id="image-stage" class="image-stage relative flex items-center justify-center">
+          <img id="main-image" src="" alt="Timelapse frame" class="w-full object-contain cursor-pointer" />
+          <div id="loading-indicator" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
+            <span class="animate-spin border-4 border-teal-500 border-t-transparent rounded-full w-8 h-8"></span>
+          </div>
+          <p id="image-error" class="hidden p-6 text-center text-red-300">This frame could not be loaded.</p>
+        </div>
+
+        <div class="mt-2 flex items-center justify-between text-sm text-gray-300">
+          <time id="capture-date"></time>
+          <span id="capture-run"></span>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center justify-between mt-2">
+          <button id="prev-frame" class="btn">← Prev</button>
+          <div class="flex items-center">
+            <label for="frame-slider" class="mr-2">Frame</label>
+            <input id="frame-slider" type="range" min="0" max="0" value="0" class="w-32"/>
+            <span id="frame-counter" class="ml-2 text-sm"></span>
+          </div>
+          <button id="next-frame" class="btn">Next →</button>
+        </div>
+
+        <div class="flex items-center justify-center mt-2">
+          <button id="play-pause" class="btn">Play</button>
+          <div class="playback-speed ml-4">
+            <button class="btn" data-speed="0.5" aria-pressed="false">0.5×</button>
+            <button class="btn" data-speed="1" aria-pressed="true">1×</button>
+            <button class="btn" data-speed="2" aria-pressed="false">2×</button>
+            <button class="btn" data-speed="4" aria-pressed="false">4×</button>
+          </div>
+        </div>
+
+        <div class="mt-2 flex justify-between">
+          <button id="compare-mode" class="btn">Compare</button>
+          <button id="fullscreen-btn" class="btn">Full‑screen</button>
+        </div>
+      </section>
+
+      <!-- Comparison view -->
+      <section id="compare-section" class="hidden mt-4">
+        <div class="flex flex-col md:flex-row gap-2">
+          <div class="flex-1 relative">
+            <img id="compare-left" src="" alt="Left frame" class="w-full object-contain"/>
+          </div>
+          <div class="flex-1 relative">
+            <img id="compare-right" src="" alt="Right frame" class="w-full object-contain"/>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <button id="swap-dates" class="btn">Swap Dates</button>
+          <button id="exit-compare" class="btn">Back to Timeline</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const capturesByTarget = new Map();
+const targetsById = new Map();
+let visibleTargets = [];
+let currentCaptures = [];
+let currentTargetId = "";
+let currentFrame = 0;
+let playbackTimer;
+let playbackSpeed = 1;
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: "https://demotiles.maplibre.org/style.json",
+  center: [0, 20],
+  zoom: 1.5,
+});
+map.addControl(new maplibregl.NavigationControl());
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 80, unit: "metric" }));
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => fn(...args), delay);
+  };
+}
+
+function pathTargetId(relativePath) {
+  const parts = String(relativePath || "").split("/").filter(Boolean);
+  if (parts[0] === "ports" && parts.length >= 3) return parts[1];
+  if (parts[0] === "corridors" && parts.length >= 5) {
+    const segment = parts[2].replace(/^segment-/, "");
+    const waypoint = parts[3].match(/^(\d{3})(?:-|$)/)?.[1];
+    if (waypoint) return `${parts[1]}-${segment}-${waypoint}`;
+  }
+  return "";
+}
+
+function legacySlug(value) {
+  return String(value || "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "waypoint";
+}
+
+function browserUrl(value) {
+  if (!value) return "";
+  if (!value.startsWith("gs://")) return value;
+  const object = value.slice(5);
+  const slash = object.indexOf("/");
+  if (slash < 0) return "";
+  const bucket = object.slice(0, slash);
+  const name = object.slice(slash + 1).split("/").map(encodeURIComponent).join("/");
+  return `https://storage.googleapis.com/${bucket}/${name}`;
+}
+
+function configuredAssetsBase() {
+  return new URLSearchParams(location.search).get("assets") ||
+    document.querySelector('meta[name="timelapse-assets-base"]')?.content || "";
+}
+
+function assetUrl(relativePath) {
+  const base = configuredAssetsBase();
+  if (!base || !relativePath) return "";
+  const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+  return new URL(relativePath.replace(/^\/+/, ""), new URL(normalizedBase, document.baseURI)).href;
+}
+
+function localImageUrls(relativePath, targetId) {
+  if (!configuredAssetsBase() || !relativePath) return [];
+  const paths = [relativePath];
+  const parts = relativePath.split("/").filter(Boolean);
+  const target = targetsById.get(targetId);
+  if (parts[0] === "corridors" && parts.length >= 5 && target) {
+    [target.legacyDirectory, target.stableDirectory].filter(Boolean).forEach((directory) => {
+      paths.push([...parts.slice(0, 3), directory, ...parts.slice(4)].join("/"));
+    });
+  }
+  return [...new Set(paths)].map(assetUrl);
+}
+
+function normalizeCapture(record, inherited = {}) {
+  const merged = { ...inherited, ...record };
+  const relativePath = merged.relative_path || merged.relativePath || merged.path || "";
+  const targetId = pathTargetId(relativePath) || merged.target_id || merged.targetId;
+  const remoteUrl = browserUrl(
+    merged.image_url || merged.imageUrl || merged.public_url || merged.publicUrl ||
+    merged.https_url || merged.url || merged.object
+  );
+  const imageUrls = localImageUrls(relativePath, targetId);
+  if (!imageUrls.length && remoteUrl) imageUrls.push(remoteUrl);
+  if (!targetId || !imageUrls.length) return null;
+  const pathDate = relativePath.split("/").pop()?.replace(/\.png$/i, "");
+  return {
+    targetId,
+    imageUrl: imageUrls[0],
+    imageUrls,
+    relativePath,
+    runId: merged.run_id || merged.runId || "",
+    capturedAt: merged.captured_at || merged.capturedAt || merged.timestamp || merged.date || pathDate || merged.generated_at || "",
+  };
+}
+
+function collectCaptures(value, inherited = {}, output = []) {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectCaptures(item, inherited, output));
+    return output;
+  }
+  if (!value || typeof value !== "object") return output;
+
+  const nextInherited = {
+    ...inherited,
+    run_id: value.run_id || value.runId || inherited.run_id,
+    generated_at: value.generated_at || value.generatedAt || inherited.generated_at,
+    target_id: value.target_id || value.targetId || inherited.target_id,
+  };
+  const capture = normalizeCapture(value, nextInherited);
+  if (capture) output.push(capture);
+
+  ["captures", "files", "manifests", "items"].forEach((key) => {
+    if (value[key]) collectCaptures(value[key], nextInherited, output);
+  });
+  if (Array.isArray(value.targets)) {
+    value.targets.forEach((target) => {
+      const targetId = target.id || target.target_id || target.targetId;
+      if (target.captures) {
+        collectCaptures(target.captures, { ...nextInherited, target_id: targetId }, output);
+      }
+    });
+  }
+  return output;
+}
+
+function inventoryTargets(inventory) {
+  const targets = [];
+  (inventory.ports_and_logistics_nodes || []).forEach((port) => {
+    targets.push({
+      id: port.id,
+      name: port.name,
+      type: port.asset_type || "port",
+      country: port.country_or_area || "",
+      aliases: port.aliases || [],
+      longitude: port.coordinates?.[0],
+      latitude: port.coordinates?.[1],
+    });
+  });
+  (inventory.corridors || []).forEach((corridor) => {
+    (corridor.route_segments || []).forEach((segment, segmentOffset) => {
+      (segment.waypoints || []).forEach((waypoint, waypointOffset) => {
+        const waypointId = waypoint.node_id || waypoint.id;
+        const waypointNumber = String(waypointOffset + 1).padStart(3, "0");
+        const id = `${corridor.id}-${String(segmentOffset + 1).padStart(2, "0")}-${waypointNumber}`;
+        targets.push({
+          id,
+          name: `${corridor.name} — ${waypoint.name}`,
+          type: "corridor_waypoint",
+          country: waypoint.country_or_area || "",
+          aliases: [waypoint.name, ...(waypoint.aliases || [])],
+          longitude: waypoint.coordinates?.[0],
+          latitude: waypoint.coordinates?.[1],
+          legacyDirectory: `${waypointNumber}-${legacySlug(waypoint.name)}`,
+          stableDirectory: waypointId ? `${waypointNumber}-${waypointId}` : "",
+        });
+      });
+    });
+  });
+  return targets.filter((target) => target.id);
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  return response.json();
+}
+
+function indexCandidates() {
+  const queryUrl = new URLSearchParams(location.search).get("index");
+  const configuredUrl = document.querySelector('meta[name="timelapse-index-url"]')?.content;
+  return [...new Set([queryUrl, configuredUrl, "./timelapse-index.json", "./index.json"].filter(Boolean))];
+}
+
+async function loadFirstIndex() {
+  const failures = [];
+  for (const url of indexCandidates()) {
+    try {
+      return { data: await fetchJson(url), url };
+    } catch (error) {
+      failures.push(`${url}: ${error.message}`);
+    }
+  }
+  throw new Error(failures.join("; "));
+}
+
+function getCapturesForTarget(id) {
+  return capturesByTarget.get(id) || [];
+}
+
+function getTargetById(id) {
+  return targetsById.get(id) || {
+    id,
+    name: id.replaceAll("_", " ").replaceAll("-", " "),
+    type: "capture target",
+    country: "",
+  };
+}
+
+function targetFeatures(targets) {
+  return {
+    type: "FeatureCollection",
+    features: targets.filter((target) => Number.isFinite(target.longitude) && Number.isFinite(target.latitude)).map((target) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [target.longitude, target.latitude] },
+      properties: { id: target.id, name: target.name, type: target.type },
+    })),
+  };
+}
+
+function updateMap(targets) {
+  const source = map.getSource("targets");
+  if (source) source.setData(targetFeatures(targets));
+}
+
+function addMapLayers() {
+  map.addSource("targets", { type: "geojson", data: targetFeatures(visibleTargets), cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
+  map.addLayer({ id: "clusters", type: "circle", source: "targets", filter: ["has", "point_count"], paint: { "circle-color": "#0284c7", "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 30, 40] } });
+  map.addLayer({ id: "cluster-count", type: "symbol", source: "targets", filter: ["has", "point_count"], layout: { "text-field": "{point_count_abbreviated}", "text-size": 12 } });
+  map.addLayer({ id: "unclustered-point", type: "circle", source: "targets", filter: ["!", ["has", "point_count"]], paint: { "circle-color": "#14b8a6", "circle-radius": 6, "circle-stroke-color": "#ecfeff", "circle-stroke-width": 2 } });
+  map.on("click", "unclustered-point", (event) => {
+    const id = event.features?.[0]?.properties?.id;
+    if (id) openTarget(id);
+  });
+  map.on("click", "clusters", async (event) => {
+    const feature = map.queryRenderedFeatures(event.point, { layers: ["clusters"] })[0];
+    if (!feature) return;
+    const zoom = await map.getSource("targets").getClusterExpansionZoom(feature.properties.cluster_id);
+    map.easeTo({ center: feature.geometry.coordinates, zoom });
+  });
+  ["clusters", "unclustered-point"].forEach((layer) => {
+    map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+  });
+}
+
+function updateControlState() {
+  const multiple = currentCaptures.length > 1;
+  $("prev-frame").disabled = !multiple;
+  $("next-frame").disabled = !multiple;
+  $("frame-slider").disabled = !multiple;
+  $("play-pause").disabled = !multiple;
+  $("compare-mode").disabled = !multiple;
+}
+
+function preloadAdjacent(index) {
+  [index - 1, index + 1].forEach((nextIndex) => {
+    const capture = currentCaptures[nextIndex];
+    if (capture) new Image().src = capture.imageUrls?.[0] || capture.imageUrl;
+  });
+}
+
+function setFrame(index) {
+  const capture = currentCaptures[index];
+  if (!capture) return;
+  currentFrame = index;
+  const target = getTargetById(currentTargetId);
+  const image = $("main-image");
+  $("loading-indicator").classList.remove("hidden");
+  $("image-error").classList.add("hidden");
+  image.classList.remove("hidden");
+  image.alt = `${target.name} satellite capture from ${capture.capturedAt || "an unknown date"}`;
+  $("frame-slider").value = String(index);
+  $("frame-counter").textContent = `${index + 1} of ${currentCaptures.length}`;
+  $("capture-date").textContent = capture.capturedAt || "Date unavailable";
+  $("capture-date").dateTime = capture.capturedAt;
+  $("capture-run").textContent = capture.runId ? `Run ${capture.runId}` : "";
+  const requestKey = `${currentTargetId}:${index}:${Date.now()}`;
+  const candidates = capture.imageUrls?.length ? capture.imageUrls : [capture.imageUrl];
+  image.dataset.requestKey = requestKey;
+  let candidateIndex = 0;
+  image.onload = () => {
+    if (image.dataset.requestKey === requestKey) $("loading-indicator").classList.add("hidden");
+  };
+  image.onerror = () => {
+    if (image.dataset.requestKey !== requestKey) return;
+    candidateIndex += 1;
+    if (candidateIndex < candidates.length) {
+      image.src = candidates[candidateIndex];
+      return;
+    }
+    $("loading-indicator").classList.add("hidden");
+    image.classList.add("hidden");
+    const details = candidates.map((url) => new URL(url).pathname).join(" or ");
+    $("image-error").textContent = `This frame could not be loaded from ${details}.`;
+    $("image-error").classList.remove("hidden");
+  };
+  image.src = candidates[candidateIndex];
+  preloadAdjacent(index);
+}
+
+function openTarget(id) {
+  stopPlayback();
+  const target = getTargetById(id);
+  currentTargetId = id;
+  currentCaptures = getCapturesForTarget(id);
+  $("target-select").value = id;
+  $("target-name").textContent = target.name;
+  $("target-type").textContent = target.type || "–";
+  $("target-country").textContent = target.country || "–";
+  $("target-coords").textContent = Number.isFinite(target.latitude) ? `${target.latitude.toFixed(3)}, ${target.longitude.toFixed(3)}` : "–";
+  $("target-info").classList.remove("hidden");
+  $("viewer-section").classList.remove("hidden");
+  $("compare-section").classList.add("hidden");
+  $("sidebar").classList.remove("hidden");
+  $("frame-slider").max = String(Math.max(0, currentCaptures.length - 1));
+  updateControlState();
+  setFrame(Math.max(0, currentCaptures.length - 1));
+}
+
+function previousFrame() {
+  setFrame((currentFrame - 1 + currentCaptures.length) % currentCaptures.length);
+}
+
+function nextFrame() {
+  setFrame((currentFrame + 1) % currentCaptures.length);
+}
+
+function startPlayback() {
+  if (playbackTimer || currentCaptures.length < 2) return;
+  $("play-pause").textContent = "Pause";
+  const step = () => {
+    nextFrame();
+    playbackTimer = window.setTimeout(step, 1000 / playbackSpeed);
+  };
+  playbackTimer = window.setTimeout(step, 1000 / playbackSpeed);
+}
+
+function stopPlayback() {
+  window.clearTimeout(playbackTimer);
+  playbackTimer = undefined;
+  $("play-pause").textContent = "Play";
+}
+
+function enterCompareMode() {
+  if (currentCaptures.length < 2) return;
+  stopPlayback();
+  $("compare-left").src = currentCaptures[0].imageUrl;
+  $("compare-right").src = currentCaptures.at(-1).imageUrl;
+  $("viewer-section").classList.add("hidden");
+  $("compare-section").classList.remove("hidden");
+}
+
+function populateTargetSelect() {
+  const select = $("target-select");
+  select.replaceChildren(new Option("Choose a location", ""));
+  visibleTargets.forEach((target) => select.add(new Option(`${target.name} (${getCapturesForTarget(target.id).length})`, target.id)));
+}
+
+async function initialize() {
+  try {
+    const [inventoryResult, indexResult] = await Promise.all([
+      fetchJson("../infra_timelapse_ports_corridors.json").catch(() => null),
+      loadFirstIndex(),
+    ]);
+    if (inventoryResult) inventoryTargets(inventoryResult).forEach((target) => targetsById.set(target.id, target));
+    const captures = collectCaptures(indexResult.data).filter((capture, index, all) =>
+      all.findIndex((candidate) => candidate.targetId === capture.targetId && candidate.imageUrl === capture.imageUrl) === index
+    );
+    captures.forEach((capture) => {
+      if (!capturesByTarget.has(capture.targetId)) capturesByTarget.set(capture.targetId, []);
+      capturesByTarget.get(capture.targetId).push(capture);
+    });
+    capturesByTarget.forEach((items) => items.sort((a, b) => a.capturedAt.localeCompare(b.capturedAt) || a.runId.localeCompare(b.runId)));
+    visibleTargets = [...capturesByTarget.keys()].map(getTargetById).sort((a, b) => a.name.localeCompare(b.name));
+    populateTargetSelect();
+    updateMap(visibleTargets);
+    $("status").textContent = `${captures.length} frames · ${visibleTargets.length} locations`;
+    const assetsBase = configuredAssetsBase();
+    $("status").title = `Loaded from ${indexResult.url}${assetsBase ? `; images from ${assetsBase}` : ""}`;
+    if (visibleTargets.length) openTarget(visibleTargets[0].id);
+    else throw new Error("The image index contained no usable captures");
+  } catch (error) {
+    console.error(error);
+    $("status").textContent = "Capture index unavailable";
+    $("target-select").replaceChildren(new Option("No captures loaded", ""));
+    $("target-name").textContent = "Could not load captures";
+    $("sidebar").classList.remove("hidden");
+    $("target-info").classList.remove("hidden");
+    $("target-info").innerHTML = `<p class="text-red-300">${error.message}</p><p class="mt-2 text-sm text-gray-300">Serve this repository over HTTP and provide an index with <code>?index=./timelapse-index.json</code>. For local captures, also set <code>&amp;assets=../images/</code>.</p>`;
+  }
+}
+
+$("prev-frame").addEventListener("click", previousFrame);
+$("next-frame").addEventListener("click", nextFrame);
+$("frame-slider").addEventListener("input", (event) => setFrame(Number(event.target.value)));
+$("play-pause").addEventListener("click", () => playbackTimer ? stopPlayback() : startPlayback());
+$("target-select").addEventListener("change", (event) => event.target.value && openTarget(event.target.value));
+document.querySelectorAll(".playback-speed button").forEach((button) => button.addEventListener("click", () => {
+  playbackSpeed = Number(button.dataset.speed);
+  document.querySelectorAll(".playback-speed button").forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
+  if (playbackTimer) { stopPlayback(); startPlayback(); }
+}));
+$("compare-mode").addEventListener("click", enterCompareMode);
+$("swap-dates").addEventListener("click", () => {
+  const left = $("compare-left");
+  const right = $("compare-right");
+  [left.src, right.src] = [right.src, left.src];
+});
+$("exit-compare").addEventListener("click", () => {
+  $("compare-section").classList.add("hidden");
+  $("viewer-section").classList.remove("hidden");
+});
+$("fullscreen-btn").addEventListener("click", () => $("image-stage").requestFullscreen?.());
+$("main-image").addEventListener("click", () => $("image-stage").requestFullscreen?.());
+$("close-sidebar").addEventListener("click", () => $("sidebar").classList.add("hidden"));
+$("search").addEventListener("input", debounce((event) => {
+  const term = event.target.value.trim().toLocaleLowerCase();
+  const filtered = visibleTargets.filter((target) => [target.name, ...(target.aliases || [])].join(" ").toLocaleLowerCase().includes(term));
+  updateMap(filtered);
+}, 250));
+map.on("load", () => { addMapLayers(); initialize(); });
+</script>
+</body>
+</html>
