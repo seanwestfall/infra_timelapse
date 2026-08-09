@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Infra Timelapse Explorer – MVP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="timelapse-index-url" content="https://storage.googleapis.com/infra-timelapse-infra-timelapse-images/index.json">
+<meta name="timelapse-index-url" content="__TIMELAPSE_INDEX_URL__">
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
@@ -166,13 +166,8 @@ function legacySlug(value) {
 
 function browserUrl(value) {
   if (!value) return "";
-  if (!value.startsWith("gs://")) return value;
-  const object = value.slice(5);
-  const slash = object.indexOf("/");
-  if (slash < 0) return "";
-  const bucket = object.slice(0, slash);
-  const name = object.slice(slash + 1).split("/").map(encodeURIComponent).join("/");
-  return `https://storage.googleapis.com/${bucket}/${name}`;
+  if (value.startsWith("gs://")) return "";
+  return value;
 }
 
 function configuredAssetsBase() {
@@ -476,12 +471,17 @@ function populateTargetSelect() {
 }
 
 async function initialize() {
+  const inventoryResult = await fetchJson("./infra_timelapse_ports_corridors.json").catch(() => null);
+  if (inventoryResult) {
+    inventoryTargets(inventoryResult).forEach((target) => targetsById.set(target.id, target));
+    visibleTargets = [...targetsById.values()].sort((a, b) => a.name.localeCompare(b.name));
+    populateTargetSelect();
+    updateMap(visibleTargets);
+    $("status").textContent = `${visibleTargets.length} locations · captures loading…`;
+  }
+
   try {
-    const [inventoryResult, indexResult] = await Promise.all([
-      fetchJson("../infra_timelapse_ports_corridors.json").catch(() => null),
-      loadFirstIndex(),
-    ]);
-    if (inventoryResult) inventoryTargets(inventoryResult).forEach((target) => targetsById.set(target.id, target));
+    const indexResult = await loadFirstIndex();
     const captures = collectCaptures(indexResult.data).filter((capture, index, all) =>
       all.findIndex((candidate) => candidate.targetId === capture.targetId && candidate.imageUrl === capture.imageUrl) === index
     );
@@ -490,22 +490,25 @@ async function initialize() {
       capturesByTarget.get(capture.targetId).push(capture);
     });
     capturesByTarget.forEach((items) => items.sort((a, b) => a.capturedAt.localeCompare(b.capturedAt) || a.runId.localeCompare(b.runId)));
-    visibleTargets = [...capturesByTarget.keys()].map(getTargetById).sort((a, b) => a.name.localeCompare(b.name));
+    const targetIds = new Set([...targetsById.keys(), ...capturesByTarget.keys()]);
+    visibleTargets = [...targetIds].map(getTargetById).sort((a, b) => a.name.localeCompare(b.name));
     populateTargetSelect();
     updateMap(visibleTargets);
     $("status").textContent = `${captures.length} frames · ${visibleTargets.length} locations`;
     const assetsBase = configuredAssetsBase();
     $("status").title = `Loaded from ${indexResult.url}${assetsBase ? `; images from ${assetsBase}` : ""}`;
-    if (visibleTargets.length) openTarget(visibleTargets[0].id);
+    const firstCapturedTarget = visibleTargets.find((target) => getCapturesForTarget(target.id).length);
+    if (firstCapturedTarget) openTarget(firstCapturedTarget.id);
     else throw new Error("The image index contained no usable captures");
   } catch (error) {
     console.error(error);
     $("status").textContent = "Capture index unavailable";
-    $("target-select").replaceChildren(new Option("No captures loaded", ""));
-    $("target-name").textContent = "Could not load captures";
-    $("sidebar").classList.remove("hidden");
-    $("target-info").classList.remove("hidden");
-    $("target-info").innerHTML = `<p class="text-red-300">${error.message}</p><p class="mt-2 text-sm text-gray-300">Serve this repository over HTTP and provide an index with <code>?index=./timelapse-index.json</code>. For local captures, also set <code>&amp;assets=../images/</code>.</p>`;
+    if (!visibleTargets.length) {
+      $("target-select").replaceChildren(new Option("No locations loaded", ""));
+      $("target-name").textContent = "Could not load inventory";
+      $("sidebar").classList.remove("hidden");
+    }
+    $("status").title = error.message;
   }
 }
 

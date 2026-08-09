@@ -11,7 +11,9 @@ fi
 
 rm -rf -- "${OUTPUT_DIRECTORY}"
 mkdir -p "${OUTPUT_DIRECTORY}"
-install -m 0644 "${REPOSITORY_ROOT}/web/index.html" \
+
+"${PYTHON:-python3}" "${REPOSITORY_ROOT}/deploy/render_web.py" \
+  "${REPOSITORY_ROOT}/web/public/index.html" \
   "${OUTPUT_DIRECTORY}/index.html"
 install -m 0644 "${REPOSITORY_ROOT}/infra_timelapse_ports_corridors.json" \
   "${OUTPUT_DIRECTORY}/infra_timelapse_ports_corridors.json"

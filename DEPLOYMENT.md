@@ -6,8 +6,8 @@ Infra Timelapse has three deliberately separate pieces:
    schedule validation.
 2. A read-only Cloud Run service exposes a sanitized aggregate index and
    authorized image responses from the private capture bucket.
-3. Cloudflare Pages serves the static map and forwards only `/api/*` requests
-   to that read service.
+3. Cloudflare Pages serves the static map, while a standalone Cloudflare
+   Worker forwards only the allowlisted browser-facing API routes.
 
 The browser never receives a `gs://` URI or an anonymous Cloud Storage URL.
 
@@ -38,7 +38,7 @@ REGION=us-west1 BUCKET_NAME=my-private-bucket bash deploy/setup_gcp.sh
 ```
 
 The final output includes the Cloud Run read-service URL. Keep it for the
-Cloudflare Pages setup below.
+standalone Worker setup below.
 
 ## Verify with one manual capture
 
@@ -70,26 +70,71 @@ the failed target ID, name, status code, and attempt count. The job fails only
 when every selected target fails or a job-level operation such as storage
 uploading fails.
 
-Verify the read service with the URL printed by the setup script:
+The read service requires the Worker-to-origin token. Verify it with the URL
+printed by the setup script and the same token stored in Secret Manager:
 
 ```bash
-curl "https://YOUR-SERVICE-URL/healthz"
-curl "https://YOUR-SERVICE-URL/api/index"
+curl -H "X-Infra-Timelapse-Origin-Token: YOUR-TOKEN" \
+  "https://YOUR-SERVICE-URL/healthz"
+curl -H "X-Infra-Timelapse-Origin-Token: YOUR-TOKEN" \
+  "https://YOUR-SERVICE-URL/api/index"
 ```
 
-## Deploy the main page to Cloudflare Pages
+## Configure the standalone Cloudflare Worker
 
-Connect the repository to a Cloudflare Pages project and configure:
+Install the pinned Wrangler dependency, replace `API_BASE_URL` in
+`web/worker/wrangler.jsonc` with the Cloud Run service URL, and configure the same
+origin token that `deploy/setup_gcp.sh` stored in Google Secret Manager:
+
+```bash
+npm install
+npx wrangler secret put ORIGIN_AUTH_TOKEN --config web/worker/wrangler.jsonc
+```
+
+If Pages and the Worker use separate hostnames, set `ALLOWED_ORIGINS` in the
+Worker configuration to a comma-separated list of the exact Pages production
+and preview origins. Leave it empty for same-origin routing. Worker routes are
+intentionally absent from the repository configuration so dashboard-managed
+routes are not overwritten by a later Wrangler deployment.
+
+## Deploy the Worker and Cloudflare Pages
+
+The deployment script always deploys the Worker by default and lets you select
+when the static Pages bundle should be deployed:
+
+```bash
+# Always deploy the Worker; deploy Pages only when frontend inputs changed.
+npm run deploy -- --pages auto --base-ref HEAD^ --head-ref HEAD
+
+# Deploy both regardless of the Git diff.
+npm run deploy -- --pages always
+
+# Deploy only the Worker.
+npm run deploy -- --pages never
+
+# Deploy only Pages.
+npm run deploy -- --worker never --pages always
+```
+
+`--pages auto` watches `web/public/`, the packaged inventory, the web build
+files, and the Pages Wrangler configuration. Set `TIMELAPSE_API_BASE` during
+the build only when the API uses a separate HTTPS hostname; otherwise the
+rendered page uses same-origin `/api/index`.
+
+The `Deploy Cloudflare` GitHub Actions workflow runs on each update to `main`.
+It tests and deploys the Worker every time, while deploying Pages only when a
+static input changed. Configure its protected `production` environment with
+the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. Optional
+variables are `CLOUDFLARE_PAGES_PROJECT` and `TIMELAPSE_API_BASE`.
+
+For a manual Pages-only integration, use:
 
 - Build command: `npm run build`
 - Build output directory: `dist`
-- Runtime variable: `API_BASE_URL=https://YOUR-CLOUD-RUN-SERVICE-URL`
 
-`web/index.html` is copied to the real `dist/index.html` entry point together
-with the monitoring inventory. The Pages Function at
-`functions/api/[[path]].js` forwards same-origin `/api/*` requests to the fixed
-Cloud Run URL. It does not forward browser cookies, authorization headers, or
-client-address headers.
+`web/public/index.html` is rendered to `dist/index.html` together with the
+monitoring inventory. API and caching behavior can be deployed independently
+without rebuilding that bundle.
 
 To verify the static bundle locally:
 
@@ -99,7 +144,7 @@ python -m http.server --directory dist 8081
 ```
 
 That local static server will load all 204 inventory markers. Live private
-captures require the Pages Function. The existing `?index=` and `?assets=`
+captures require the standalone Worker. The existing `?index=` and `?assets=`
 parameters remain available for a local manifest and local image directory.
 
 ## Storage and access boundary
@@ -112,14 +157,16 @@ The setup creates or updates:
 - a capture-job service account with object-user access;
 - a read-service account with object-viewer access only;
 - a scheduler service account that can invoke only the capture job;
-- a Secret Manager secret for the Google Maps API key;
-- the Cloud Run job, public read service, and Scheduler job.
+- Secret Manager secrets for the Google Maps API key and Worker-to-origin
+  token;
+- the Cloud Run job, authenticated read service, and Scheduler job.
 
-The public read service is the intentional delivery boundary. It returns only
-the aggregate capture fields needed by the page and only PNG objects under the
-`captures/` prefix. It never exposes metadata objects, bucket credentials, or
-direct object URIs. Capture image paths are immutable and may be cached; the
-aggregate index is refreshed every five minutes at most.
+The Worker is the public delivery boundary. The Cloud Run read service rejects
+requests without the shared origin token. It returns only the aggregate capture
+fields needed by the page and PNG objects under the `captures/` prefix. It
+never exposes metadata objects, bucket credentials, or direct object URIs.
+Capture image paths are immutable and may be cached; the aggregate index is
+refreshed every five minutes at most.
 
 The current test schedule expression is `0 3 * * *`, which runs daily at 03:00
 in `Pacific/Honolulu`. To restore the twice-monthly cadence without changing

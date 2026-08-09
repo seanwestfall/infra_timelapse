@@ -1,4 +1,6 @@
 import json
+import os
+from io import BytesIO
 import unittest
 
 import capture_api
@@ -25,6 +27,11 @@ class FakeBlob:
     def download_as_bytes(self):
         value = self.bucket.objects[self.name]
         return value if isinstance(value, bytes) else value.encode("utf-8")
+
+    def open(self, mode):
+        if mode != "rb":
+            raise ValueError("FakeBlob supports only binary reads")
+        return BytesIO(self.download_as_bytes())
 
     def upload_from_string(self, value, content_type=None):
         self.bucket.objects[self.name] = value
@@ -131,19 +138,43 @@ class CaptureIndexTests(unittest.TestCase):
             }
         )
         previous_bucket = capture_api._bucket
+        previous_token = os.environ.get("ORIGIN_AUTH_TOKEN")
         capture_api._bucket = bucket
+        os.environ["ORIGIN_AUTH_TOKEN"] = "test-origin-token"
         try:
             client = capture_api.app.test_client()
-            index_response = client.get("/api/index")
-            image_response = client.get(f"/api/captures/{OBJECT_NAME}")
+            headers = {
+                capture_api.ORIGIN_AUTH_HEADER: "test-origin-token",
+            }
+            index_response = client.get("/api/index", headers=headers)
+            image_response = client.get(
+                f"/api/captures/{OBJECT_NAME}", headers=headers
+            )
         finally:
             capture_api._bucket = previous_bucket
+            if previous_token is None:
+                os.environ.pop("ORIGIN_AUTH_TOKEN", None)
+            else:
+                os.environ["ORIGIN_AUTH_TOKEN"] = previous_token
 
         self.assertEqual(index_response.status_code, 200)
         self.assertNotIn(b"gs://", index_response.data)
         self.assertEqual(image_response.status_code, 200)
         self.assertEqual(image_response.data, b"PNGDATA")
         self.assertEqual(image_response.content_type, "image/png")
+
+    def test_http_boundary_rejects_direct_unauthorized_requests(self):
+        previous_token = os.environ.get("ORIGIN_AUTH_TOKEN")
+        os.environ["ORIGIN_AUTH_TOKEN"] = "test-origin-token"
+        try:
+            response = capture_api.app.test_client().get("/api/index")
+        finally:
+            if previous_token is None:
+                os.environ.pop("ORIGIN_AUTH_TOKEN", None)
+            else:
+                os.environ["ORIGIN_AUTH_TOKEN"] = previous_token
+
+        self.assertEqual(response.status_code, 401)
 
 
 if __name__ == "__main__":

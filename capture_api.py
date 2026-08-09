@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 from pathlib import PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, stream_with_context
 from google.cloud import storage
 
 from cloud_run_job import INDEX_OBJECT, build_capture_index, required_environment
@@ -16,6 +17,23 @@ from cloud_run_job import INDEX_OBJECT, build_capture_index, required_environmen
 
 app = Flask(__name__)
 _bucket: Any | None = None
+ORIGIN_AUTH_HEADER = "X-Infra-Timelapse-Origin-Token"
+
+
+@app.before_request
+def require_origin_auth() -> Response | None:
+    """Reject requests that did not arrive through the configured Worker."""
+    expected = os.getenv("ORIGIN_AUTH_TOKEN", "").strip()
+    if not expected:
+        app.logger.error("ORIGIN_AUTH_TOKEN is not configured")
+        return cache_headers(
+            jsonify({"error": "Capture service is not configured"}),
+            "no-store",
+        ), 503
+    supplied = request.headers.get(ORIGIN_AUTH_HEADER, "")
+    if not secrets.compare_digest(supplied, expected):
+        return cache_headers(jsonify({"error": "Unauthorized"}), "no-store"), 401
+    return None
 
 
 def get_bucket() -> Any:
@@ -113,6 +131,13 @@ def cache_headers(response: Response, value: str) -> Response:
     return response
 
 
+def stream_blob(blob: Any):
+    """Yield a private object without buffering the complete PNG in memory."""
+    with blob.open("rb") as source:
+        while chunk := source.read(1024 * 1024):
+            yield chunk
+
+
 @app.get("/healthz")
 def health() -> Response:
     return cache_headers(jsonify({"status": "ok"}), "no-store")
@@ -152,7 +177,7 @@ def capture_image(object_name: str) -> Response:
         response = Response(status=304)
     else:
         response = Response(
-            blob.download_as_bytes(),
+            stream_with_context(stream_blob(blob)),
             content_type="image/png",
         )
     if etag:

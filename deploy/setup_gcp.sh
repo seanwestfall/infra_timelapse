@@ -10,6 +10,7 @@ INDEX_SERVICE_NAME="${INDEX_SERVICE_NAME:-infra-timelapse-index}"
 SCHEDULER_NAME="${SCHEDULER_NAME:-infra-timelapse-biweekly}"
 BUCKET_NAME="${BUCKET_NAME:-${PROJECT_ID}-infra-timelapse-images}"
 SECRET_NAME="${SECRET_NAME:-google-maps-api-key}"
+ORIGIN_SECRET_NAME="${ORIGIN_SECRET_NAME:-infra-timelapse-origin-token}"
 RUNTIME_SA_NAME="${RUNTIME_SA_NAME:-infra-timelapse-job}"
 INDEX_SA_NAME="${INDEX_SA_NAME:-infra-timelapse-index}"
 SCHEDULER_SA_NAME="${SCHEDULER_SA_NAME:-infra-timelapse-scheduler}"
@@ -38,6 +39,7 @@ Artifact repository: ${ARTIFACT_REPOSITORY}
 Container image:     ${IMAGE_URI}
 Storage bucket:      gs://${BUCKET_NAME}
 Secret:              ${SECRET_NAME}
+Origin auth secret:  ${ORIGIN_SECRET_NAME}
 Cloud Run job:       ${JOB_NAME}
 Capture read service: ${INDEX_SERVICE_NAME}
 Scheduler job:       ${SCHEDULER_NAME}
@@ -119,6 +121,28 @@ if ! gcloud secrets describe "${SECRET_NAME}" \
     --project "${PROJECT_ID}"
 fi
 
+if ! gcloud secrets describe "${ORIGIN_SECRET_NAME}" \
+  --project "${PROJECT_ID}" >/dev/null 2>&1; then
+  gcloud secrets create "${ORIGIN_SECRET_NAME}" \
+    --replication-policy automatic \
+    --project "${PROJECT_ID}"
+fi
+
+if ! gcloud secrets versions list "${ORIGIN_SECRET_NAME}" \
+  --project "${PROJECT_ID}" --filter='state=ENABLED' \
+  --format='value(name)' --limit=1 | grep -q .; then
+  read -r -s -p "Worker-to-origin token (input hidden): " origin_auth_token
+  echo
+  if [[ -z "${origin_auth_token}" ]]; then
+    echo "The origin token cannot be empty. No secret version was added."
+    exit 1
+  fi
+  printf '%s' "${origin_auth_token}" | \
+    gcloud secrets versions add "${ORIGIN_SECRET_NAME}" \
+      --data-file=- --project "${PROJECT_ID}"
+  unset origin_auth_token
+fi
+
 if ! gcloud secrets versions list "${SECRET_NAME}" \
   --project "${PROJECT_ID}" --filter='state=ENABLED' \
   --format='value(name)' --limit=1 | grep -q .; then
@@ -135,6 +159,11 @@ fi
 
 gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
   --member "serviceAccount:${RUNTIME_SA}" \
+  --role roles/secretmanager.secretAccessor \
+  --project "${PROJECT_ID}"
+
+gcloud secrets add-iam-policy-binding "${ORIGIN_SECRET_NAME}" \
+  --member "serviceAccount:${INDEX_SA}" \
   --role roles/secretmanager.secretAccessor \
   --project "${PROJECT_ID}"
 
@@ -160,6 +189,7 @@ gcloud run deploy "${INDEX_SERVICE_NAME}" \
   --region "${REGION}" \
   --service-account "${INDEX_SA}" \
   --set-env-vars "APP_MODE=api,GCS_BUCKET=${BUCKET_NAME}" \
+  --set-secrets "ORIGIN_AUTH_TOKEN=${ORIGIN_SECRET_NAME}:latest" \
   --no-invoker-iam-check \
   --memory 512Mi \
   --cpu 1 \
@@ -211,9 +241,12 @@ Test once:
 Inspect captures:
   gcloud storage ls gs://${BUCKET_NAME}/manifests/
 
-Capture API:
-  ${INDEX_SERVICE_URL}/api/index
-
-Set the Cloudflare Pages runtime variable API_BASE_URL to:
+Private capture API origin:
   ${INDEX_SERVICE_URL}
+
+Set API_BASE_URL in web/worker/wrangler.jsonc to:
+  ${INDEX_SERVICE_URL}
+
+Set the same origin token as the Worker secret:
+  npx wrangler secret put ORIGIN_AUTH_TOKEN --config web/worker/wrangler.jsonc
 EOF

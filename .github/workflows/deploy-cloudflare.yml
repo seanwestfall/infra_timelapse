@@ -1,0 +1,66 @@
+name: Deploy Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: Deploy the static Pages frontend
+        required: true
+        default: auto
+        type: choice
+        options: [auto, always, never]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: npm install
+
+      - run: npm test
+
+      - run: pip install -r requirements.txt
+
+      - run: python -m unittest discover -s tests -p 'test_*.py'
+
+      - run: npm run build
+
+      - run: npm run validate:worker
+
+      - name: Deploy Worker and conditionally deploy Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          CLOUDFLARE_PAGES_BRANCH: main
+          TIMELAPSE_API_BASE: ${{ vars.TIMELAPSE_API_BASE }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          INPUT_PAGES: ${{ inputs.pages }}
+        run: |
+          pages_mode="${INPUT_PAGES:-auto}"
+          bash deploy/deploy_cloudflare.sh \
+            --pages "${pages_mode}" \
+            --base-ref "${EVENT_BEFORE}" \
+            --head-ref "${EVENT_SHA}"
