@@ -6,6 +6,7 @@
     "build": "bash deploy/build_web.sh",
     "deploy": "bash deploy/deploy_cloudflare.sh",
     "deploy:worker": "wrangler deploy --config web/worker/wrangler.jsonc",
+    "secret:database": "wrangler secret put DATABASE_URL --config web/worker/wrangler.jsonc",
     "deploy:pages": "bash deploy/deploy_cloudflare.sh --worker never --pages always",
     "test": "node --test web/worker/test/*.test.mjs",
     "test:worker": "node --test web/worker/test/*.test.mjs",
@@ -13,5 +14,8 @@
   },
   "devDependencies": {
     "wrangler": "4.120.0"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.1.0"
   }
 }

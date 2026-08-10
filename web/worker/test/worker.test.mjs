@@ -6,6 +6,7 @@ import { handleRequest } from "../src/index.js";
 const ENV = {
   API_BASE_URL: "https://capture-api.example.run.app",
   ORIGIN_AUTH_TOKEN: "origin-secret",
+  DATABASE_URL: "postgresql://inventory.example/test",
   ALLOWED_ORIGINS: "https://infra.example,https://preview.example",
 };
 
@@ -179,6 +180,120 @@ test("fails closed when origin configuration is incomplete", async () => {
       { API_BASE_URL: ENV.API_BASE_URL },
     );
     assert.equal(response.status, 503);
+  } finally {
+    console.error = originalError;
+  }
+});
+
+test("returns node inventory from the infratimelapse schema", async () => {
+  let connectionString;
+  let queryText;
+  const rows = [
+    {
+      code: "n-lianyungang-port",
+      name: "Lianyungang Port",
+      record_status: "draft",
+      node_type: "seaport",
+      monitoring_tier: "priority",
+      jurisdictions: [{ iso2: "CN", role: "primary" }],
+      geometry: { type: "Point", coordinates: [119.4333, 34.7167] },
+    },
+  ];
+  const createDatabaseClient = (value) => {
+    connectionString = value;
+    return async (strings) => {
+      queryText = strings.join("");
+      return rows;
+    };
+  };
+
+  const response = await handleRequest(
+    new Request("https://infra.example/api/nodes", {
+      headers: { Origin: "https://infra.example" },
+    }),
+    ENV,
+    context(),
+    null,
+    { createDatabaseClient },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(connectionString, ENV.DATABASE_URL);
+  assert.match(queryText, /FROM infratimelapse\.nodes AS n/);
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
+  assert.equal(response.headers.get("access-control-allow-origin"), "https://infra.example");
+  assert.deepEqual(await response.json(), {
+    schema: "infratimelapse",
+    count: 1,
+    data: rows,
+  });
+});
+
+test("serves all read-only database routes and caches successful results", async () => {
+  const cache = memoryCache();
+  const expectedTable = new Map([
+    ["/api/nodes", "nodes"],
+    ["/api/corridors", "corridors"],
+    ["/api/projects", "projects"],
+  ]);
+  for (const [path, table] of expectedTable) {
+    let calls = 0;
+    const createDatabaseClient = () => async (strings) => {
+      calls += 1;
+      assert.match(strings.join(""), new RegExp(`infratimelapse\\.${table}`));
+      return [];
+    };
+    const url = `https://infra.example${path}`;
+    const ctx = context();
+    const first = await handleRequest(
+      new Request(url),
+      ENV,
+      ctx,
+      cache,
+      { createDatabaseClient },
+    );
+    await Promise.all(ctx.writes);
+    const second = await handleRequest(
+      new Request(url),
+      ENV,
+      context(),
+      cache,
+      { createDatabaseClient },
+    );
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.equal(calls, 1);
+  }
+});
+
+test("fails closed without a database secret and hides database errors", async () => {
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const missingSecret = await handleRequest(
+      new Request("https://infra.example/api/nodes"),
+      { ...ENV, DATABASE_URL: undefined },
+    );
+    assert.equal(missingSecret.status, 503);
+    assert.deepEqual(await missingSecret.json(), {
+      error: "Inventory database is not configured",
+    });
+
+    const failedQuery = await handleRequest(
+      new Request("https://infra.example/api/corridors"),
+      ENV,
+      context(),
+      null,
+      {
+        createDatabaseClient: () => async () => {
+          throw new Error(`connection failed: ${ENV.DATABASE_URL}`);
+        },
+      },
+    );
+    assert.equal(failedQuery.status, 502);
+    assert.deepEqual(await failedQuery.json(), {
+      error: "Inventory database unavailable",
+    });
   } finally {
     console.error = originalError;
   }
