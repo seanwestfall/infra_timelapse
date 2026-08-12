@@ -13,6 +13,7 @@ class FakeBlob:
     def __init__(self, name):
         self.name = name
         self.metadata = None
+        self.cache_control = None
         self.uploaded_from = None
         self.uploaded_string = None
 
@@ -22,6 +23,9 @@ class FakeBlob:
     def upload_from_string(self, value, content_type=None):
         self.uploaded_string = (value, content_type)
 
+    def download_as_text(self, encoding="utf-8"):
+        return self.uploaded_string[0]
+
 
 class FakeBucket:
     def __init__(self):
@@ -29,6 +33,13 @@ class FakeBucket:
 
     def blob(self, name):
         return self.blobs.setdefault(name, FakeBlob(name))
+
+    def list_blobs(self, prefix=""):
+        return [
+            blob
+            for name, blob in sorted(self.blobs.items())
+            if name.startswith(prefix)
+        ]
 
 
 class CloudRunJobTests(unittest.TestCase):
@@ -86,6 +97,11 @@ class CloudRunJobTests(unittest.TestCase):
         uploaded_manifest = bucket.blobs["manifests/test-run.json"]
         payload = json.loads(uploaded_manifest.uploaded_string[0])
         self.assertEqual(payload, manifest)
+        capture_index = json.loads(
+            bucket.blobs["index.json"].uploaded_string[0]
+        )
+        self.assertEqual(capture_index["manifest_count"], 1)
+        self.assertEqual(capture_index["capture_count"], 1)
 
 
 if __name__ == "__main__":

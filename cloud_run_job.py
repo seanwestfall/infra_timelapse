@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Any
 
 
+MANIFEST_PREFIX = "manifests/"
+INDEX_OBJECT = "index.json"
+
+
 def required_environment(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -49,6 +53,46 @@ def load_capture_report(capture_report_file: Path) -> dict[str, Any]:
     if not isinstance(report, dict):
         raise RuntimeError("Capture report must contain a JSON object")
     return report
+
+
+def build_capture_index(bucket: Any) -> dict[str, Any]:
+    """Build one aggregate index from every immutable run manifest."""
+    manifests: list[dict[str, Any]] = []
+    for blob in bucket.list_blobs(prefix=MANIFEST_PREFIX):
+        if not blob.name.endswith(".json"):
+            continue
+        manifest = json.loads(blob.download_as_text(encoding="utf-8"))
+        if not isinstance(manifest, dict) or not isinstance(
+            manifest.get("files"), list
+        ):
+            raise ValueError(f"Invalid capture manifest: {blob.name}")
+        manifests.append(manifest)
+
+    manifests.sort(
+        key=lambda manifest: (
+            str(manifest.get("generated_at", "")),
+            str(manifest.get("run_id", "")),
+        )
+    )
+    return {
+        "schema_version": "1.0.0",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "manifest_count": len(manifests),
+        "capture_count": sum(len(manifest["files"]) for manifest in manifests),
+        "manifests": manifests,
+    }
+
+
+def publish_capture_index(bucket: Any) -> dict[str, Any]:
+    """Publish the aggregate index without changing bucket visibility."""
+    capture_index = build_capture_index(bucket)
+    index_blob = bucket.blob(INDEX_OBJECT)
+    index_blob.cache_control = "private, max-age=0, no-store"
+    index_blob.upload_from_string(
+        json.dumps(capture_index, ensure_ascii=False, indent=2) + "\n",
+        content_type="application/json",
+    )
+    return capture_index
 
 
 def upload_capture(
@@ -115,11 +159,12 @@ def upload_capture(
         ),
         "files": files,
     }
-    manifest_blob = bucket.blob(f"manifests/{run_id}.json")
+    manifest_blob = bucket.blob(f"{MANIFEST_PREFIX}{run_id}.json")
     manifest_blob.upload_from_string(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         content_type="application/json",
     )
+    publish_capture_index(bucket)
     return manifest
 
 
@@ -154,6 +199,7 @@ def main() -> None:
         f"gs://{bucket_name}/captures/{run_id}/"
     )
     print(f"Manifest: gs://{bucket_name}/manifests/{run_id}.json")
+    print(f"Aggregate index: gs://{bucket_name}/{INDEX_OBJECT}")
     if manifest["failure_count"]:
         print(
             f"Partial capture: {manifest['failure_count']} target(s) failed; "

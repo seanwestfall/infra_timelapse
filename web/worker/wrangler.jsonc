@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "if-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-08",
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {
+    "API_BASE_URL": "https://infra-timelapse-index-aicxsrrc2a-uw.a.run.app",
+    "ALLOWED_ORIGINS": ""
+  },
+  "secrets": {
+    "required": ["ORIGIN_AUTH_TOKEN"]
+  }
+}

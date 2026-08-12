@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+images/
+metadata.json
+.dev.vars*
+.env*
+node_modules/
