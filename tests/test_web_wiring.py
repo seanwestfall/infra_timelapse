@@ -22,6 +22,19 @@ class WebWiringTests(unittest.TestCase):
             'fetchJson("./infra_timelapse_ports_corridors.json")', html
         )
         self.assertNotIn("storage.googleapis.com", html)
+        self.assertIn('data-login-kind="partner"', html)
+        self.assertIn('data-login-kind="agent"', html)
+        self.assertIn('id="provider-select"', html)
+        for provider in (
+            "google_static_maps",
+            "usgs_landsat",
+            "copernicus_sentinel_2",
+        ):
+            self.assertIn(f'value="{provider}"', html)
+        self.assertIn(
+            "capture.provider === selectedProvider",
+            html,
+        )
 
     def test_pages_build_contains_real_entry_point_and_inventory(self):
         subprocess.run(

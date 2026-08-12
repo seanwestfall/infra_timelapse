@@ -5,6 +5,8 @@
 <title>Infra Timelapse Explorer – MVP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="timelapse-index-url" content="https://if-api.acceler.workers.dev/api/index">
+<meta name="partner-login-url" content="">
+<meta name="agent-login-url" content="">
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
@@ -25,6 +27,9 @@
   .playback-speed button[aria-pressed="true"] { background:#14b8a6; box-shadow:0 0 0 2px #5eead4 inset; }
   .image-stage { min-height:240px; background:#111827; border-radius:.5rem; overflow:hidden; }
   .image-stage img { min-height:240px; max-height:58vh; }
+  .modal-backdrop { background:rgba(3,7,18,.82); }
+  .login-option { border:1px solid #374151; background:#111827; }
+  .login-option:hover { border-color:#2dd4bf; background:#1f2937; }
   @media (max-width:767px) {
     #map { min-height:45vh; }
     .sidebar { position:fixed; z-index:10; left:0; right:0; bottom:0; max-width:none; max-height:65vh; border-radius:1rem 1rem 0 0; }
@@ -35,9 +40,35 @@
 <!-- Top navigation -->
 <header class="flex items-center justify-between p-4 bg-gray-800">
   <h1 class="text-xl font-semibold">Infra Timelapse Explorer</h1>
-  <input id="search" type="text" placeholder="Search…" class="px-2 py-1 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+  <div class="flex items-center gap-3">
+    <input id="search" type="text" placeholder="Search…" class="px-2 py-1 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+    <button id="open-login" class="btn" type="button">Log in</button>
+  </div>
   <span id="status" class="text-sm text-gray-400" role="status">Loading captures…</span>
 </header>
+
+<div id="login-modal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="login-title">
+  <div class="w-full max-w-lg rounded-xl bg-gray-800 p-6 shadow-2xl">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="login-title" class="text-xl font-semibold">Choose how to log in</h2>
+        <p class="mt-1 text-sm text-gray-400">Access is granted according to your organization and assigned role.</p>
+      </div>
+      <button id="close-login" type="button" class="rounded px-2 py-1 text-gray-300 hover:bg-gray-700" aria-label="Close login dialog">✕</button>
+    </div>
+    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+      <button type="button" class="login-option rounded-lg p-4 text-left" data-login-kind="partner">
+        <span class="block font-semibold text-teal-300">Partner login</span>
+        <span class="mt-1 block text-sm text-gray-300">For customers, business partners, and approved external collaborators.</span>
+      </button>
+      <button type="button" class="login-option rounded-lg p-4 text-left" data-login-kind="agent">
+        <span class="block font-semibold text-teal-300">Agent login</span>
+        <span class="mt-1 block text-sm text-gray-300">For authorized human operators and agent workspaces. AI agents use scoped machine credentials.</span>
+      </button>
+    </div>
+    <p id="login-message" class="mt-4 hidden rounded bg-gray-900 p-3 text-sm text-amber-200" role="status"></p>
+  </div>
+</div>
 
 <div class="flex h-[calc(100vh-4rem)]">
   <!-- Map -->
@@ -53,6 +84,13 @@
       <label for="target-select" class="block text-sm font-medium mb-1">Location</label>
       <select id="target-select" class="w-full mb-4 px-2 py-2 rounded bg-gray-700 text-white">
         <option value="">Loading locations…</option>
+      </select>
+
+      <label for="provider-select" class="block text-sm font-medium mb-1">Imagery provider</label>
+      <select id="provider-select" class="w-full mb-4 px-2 py-2 rounded bg-gray-700 text-white">
+        <option value="google_static_maps">Google Maps</option>
+        <option value="usgs_landsat">Landsat</option>
+        <option value="copernicus_sentinel_2">Sentinel-2</option>
       </select>
 
       <section id="target-info" class="mb-4 hidden">
@@ -102,6 +140,10 @@
         </div>
       </section>
 
+      <section id="provider-empty" class="hidden rounded bg-gray-800 p-4 text-sm text-gray-300" role="status">
+        No captures from the selected provider are available for this location.
+      </section>
+
       <!-- Comparison view -->
       <section id="compare-section" class="hidden mt-4">
         <div class="flex flex-col md:flex-row gap-2">
@@ -131,6 +173,13 @@ let currentTargetId = "";
 let currentFrame = 0;
 let playbackTimer;
 let playbackSpeed = 1;
+let selectedProvider = "google_static_maps";
+
+const providerLabels = {
+  google_static_maps: "Google Maps",
+  usgs_landsat: "Landsat",
+  copernicus_sentinel_2: "Sentinel-2",
+};
 
 const map = new maplibregl.Map({
   container: "map",
@@ -219,6 +268,7 @@ function normalizeCapture(record, inherited = {}) {
     imageUrls,
     relativePath,
     runId: merged.run_id || merged.runId || "",
+    provider: merged.provider || "google_static_maps",
     capturedAt: merged.captured_at || merged.capturedAt || merged.timestamp || merged.date || pathDate || merged.generated_at || "",
   };
 }
@@ -235,6 +285,7 @@ function collectCaptures(value, inherited = {}, output = []) {
     run_id: value.run_id || value.runId || inherited.run_id,
     generated_at: value.generated_at || value.generatedAt || inherited.generated_at,
     target_id: value.target_id || value.targetId || inherited.target_id,
+    provider: value.provider || inherited.provider,
   };
   const capture = normalizeCapture(value, nextInherited);
   if (capture) output.push(capture);
@@ -314,7 +365,7 @@ async function loadFirstIndex() {
 }
 
 function getCapturesForTarget(id) {
-  return capturesByTarget.get(id) || [];
+  return (capturesByTarget.get(id) || []).filter((capture) => capture.provider === selectedProvider);
 }
 
 function getTargetById(id) {
@@ -429,12 +480,13 @@ function openTarget(id) {
   $("target-country").textContent = target.country || "–";
   $("target-coords").textContent = Number.isFinite(target.latitude) ? `${target.latitude.toFixed(3)}, ${target.longitude.toFixed(3)}` : "–";
   $("target-info").classList.remove("hidden");
-  $("viewer-section").classList.remove("hidden");
+  $("viewer-section").classList.toggle("hidden", !currentCaptures.length);
+  $("provider-empty").classList.toggle("hidden", Boolean(currentCaptures.length));
   $("compare-section").classList.add("hidden");
   $("sidebar").classList.remove("hidden");
   $("frame-slider").max = String(Math.max(0, currentCaptures.length - 1));
   updateControlState();
-  setFrame(Math.max(0, currentCaptures.length - 1));
+  if (currentCaptures.length) setFrame(Math.max(0, currentCaptures.length - 1));
 }
 
 function previousFrame() {
@@ -474,6 +526,46 @@ function populateTargetSelect() {
   const select = $("target-select");
   select.replaceChildren(new Option("Choose a location", ""));
   visibleTargets.forEach((target) => select.add(new Option(`${target.name} (${getCapturesForTarget(target.id).length})`, target.id)));
+}
+
+function updateProvider(provider) {
+  stopPlayback();
+  selectedProvider = provider;
+  populateTargetSelect();
+  const providerCaptureCount = [...capturesByTarget.values()].flat().filter((capture) => capture.provider === provider).length;
+  $("status").textContent = `${providerCaptureCount} ${providerLabels[provider]} frames · ${visibleTargets.length} locations`;
+  const nextTargetId = currentTargetId && getCapturesForTarget(currentTargetId).length
+    ? currentTargetId
+    : visibleTargets.find((target) => getCapturesForTarget(target.id).length)?.id;
+  if (nextTargetId) openTarget(nextTargetId);
+  else if (currentTargetId) openTarget(currentTargetId);
+}
+
+function loginUrl(kind) {
+  return document.querySelector(`meta[name="${kind}-login-url"]`)?.content?.trim() || "";
+}
+
+function setLoginModal(open) {
+  const modal = $("login-modal");
+  modal.classList.toggle("hidden", !open);
+  modal.classList.toggle("flex", open);
+  if (open) {
+    $("login-message").classList.add("hidden");
+    $("close-login").focus();
+  } else {
+    $("open-login").focus();
+  }
+}
+
+function beginLogin(kind) {
+  const url = loginUrl(kind);
+  if (url) {
+    location.assign(url);
+    return;
+  }
+  const message = $("login-message");
+  message.textContent = `${kind === "partner" ? "Partner" : "Agent"} authentication will be available after Cloudflare Access is configured.`;
+  message.classList.remove("hidden");
 }
 
 async function initialize() {
@@ -523,6 +615,16 @@ $("next-frame").addEventListener("click", nextFrame);
 $("frame-slider").addEventListener("input", (event) => setFrame(Number(event.target.value)));
 $("play-pause").addEventListener("click", () => playbackTimer ? stopPlayback() : startPlayback());
 $("target-select").addEventListener("change", (event) => event.target.value && openTarget(event.target.value));
+$("provider-select").addEventListener("change", (event) => updateProvider(event.target.value));
+$("open-login").addEventListener("click", () => setLoginModal(true));
+$("close-login").addEventListener("click", () => setLoginModal(false));
+$("login-modal").addEventListener("click", (event) => {
+  if (event.target === $("login-modal")) setLoginModal(false);
+});
+document.querySelectorAll("[data-login-kind]").forEach((button) => button.addEventListener("click", () => beginLogin(button.dataset.loginKind)));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("login-modal").classList.contains("hidden")) setLoginModal(false);
+});
 document.querySelectorAll(".playback-speed button").forEach((button) => button.addEventListener("click", () => {
   playbackSpeed = Number(button.dataset.speed);
   document.querySelectorAll(".playback-speed button").forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
