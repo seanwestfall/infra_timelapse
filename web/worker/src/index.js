@@ -1,3 +1,5 @@
+import { DATABASE_PATHS, queryInventory } from "./database.js";
+
 const INDEX_PATH = "/api/index";
 const CAPTURE_PREFIX = "/api/captures/";
 const ORIGIN_AUTH_HEADER = "X-Infra-Timelapse-Origin-Token";
@@ -97,6 +99,60 @@ function cacheControl(kind) {
     : "public, max-age=31536000, immutable";
 }
 
+function databaseHeaders(corsOrigin) {
+  const headers = {
+    "Cache-Control": "public, max-age=60, s-maxage=300",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  };
+  if (corsOrigin) {
+    headers["Access-Control-Allow-Origin"] = corsOrigin;
+    headers.Vary = "Origin";
+  }
+  return headers;
+}
+
+async function databaseResponse(
+  request,
+  env,
+  ctx,
+  cache,
+  kind,
+  corsOrigin,
+  createDatabaseClient,
+) {
+  if (!env.DATABASE_URL) {
+    console.error("DATABASE_URL is not configured");
+    return jsonResponse({ error: "Inventory database is not configured" }, 503);
+  }
+
+  const requestUrl = new URL(request.url);
+  const cacheUrl = new URL(requestUrl.origin);
+  cacheUrl.pathname = requestUrl.pathname;
+  if (corsOrigin) cacheUrl.searchParams.set("cors-origin", corsOrigin);
+  const cacheKey = new Request(cacheUrl, { method: "GET" });
+  if (cache && request.method === "GET") {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cachedResponseForMethod(cached, request.method);
+  }
+
+  let result;
+  try {
+    result = await queryInventory(kind, env.DATABASE_URL, createDatabaseClient);
+  } catch (error) {
+    console.error("Inventory database request failed", error);
+    return jsonResponse({ error: "Inventory database unavailable" }, 502);
+  }
+
+  const response = jsonResponse(result, 200, databaseHeaders(corsOrigin));
+  if (cache && request.method === "GET") {
+    const cacheWrite = cache.put(cacheKey, response.clone());
+    if (ctx.waitUntil) ctx.waitUntil(cacheWrite);
+    else await cacheWrite;
+  }
+  return cachedResponseForMethod(response, request.method);
+}
+
 function publicHeaders(upstreamHeaders, kind, corsOrigin) {
   const headers = new Headers();
   for (const name of FORWARDED_RESPONSE_HEADERS) {
@@ -122,7 +178,13 @@ function cachedResponseForMethod(response, method) {
   });
 }
 
-export async function handleRequest(request, env, ctx = {}, cache = null) {
+export async function handleRequest(
+  request,
+  env,
+  ctx = {},
+  cache = null,
+  dependencies = {},
+) {
   const incomingUrl = new URL(request.url);
   if (incomingUrl.pathname === "/healthz") {
     if (!(["GET", "HEAD"].includes(request.method))) {
@@ -142,11 +204,24 @@ export async function handleRequest(request, env, ctx = {}, cache = null) {
     });
   }
 
+  const databaseKind = DATABASE_PATHS.get(incomingUrl.pathname);
   const route = routeFor(incomingUrl);
-  if (!route) return jsonResponse({ error: "Not found" }, 404);
+  if (!route && !databaseKind) return jsonResponse({ error: "Not found" }, 404);
 
   const cors = allowedOrigin(request, env);
   if (!cors.allowed) return jsonResponse({ error: "Origin not allowed" }, 403);
+
+  if (databaseKind) {
+    return databaseResponse(
+      request,
+      env,
+      ctx,
+      cache,
+      databaseKind,
+      cors.origin,
+      dependencies.createDatabaseClient,
+    );
+  }
 
   let base;
   try {

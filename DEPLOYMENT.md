@@ -6,8 +6,9 @@ Infra Timelapse has three deliberately separate pieces:
    schedule validation.
 2. A read-only Cloud Run service exposes a sanitized aggregate index and
    authorized image responses from the private capture bucket.
-3. Cloudflare Pages serves the static map, while a standalone Cloudflare
-   Worker forwards only the allowlisted browser-facing API routes.
+3. Cloudflare Pages serves the static map, while the standalone `if-api`
+   Cloudflare Worker reads the public geospatial inventory from Neon and
+   forwards only allowlisted capture routes to the private-storage service.
 
 The browser never receives a `gs://` URI or an anonymous Cloud Storage URL.
 
@@ -82,14 +83,35 @@ curl -H "X-Infra-Timelapse-Origin-Token: YOUR-TOKEN" \
 
 ## Configure the standalone Cloudflare Worker
 
-Install the pinned Wrangler dependency, replace `API_BASE_URL` in
+Install the pinned dependencies, replace `API_BASE_URL` in
 `web/worker/wrangler.jsonc` with the Cloud Run service URL, and configure the same
-origin token that `deploy/setup_gcp.sh` stored in Google Secret Manager:
+origin token that `deploy/setup_gcp.sh` stored in Google Secret Manager. Then
+store the Neon pooled connection string as a second Worker secret:
 
 ```bash
 npm install
 npx wrangler secret put ORIGIN_AUTH_TOKEN --config web/worker/wrangler.jsonc
+npm run secret:database
 ```
+
+The final command prompts for the value of `DATABASE_URL`; paste the Neon
+pooled connection string at that prompt. Do not add it to `wrangler.jsonc`, a
+shell script, a `.env` file, GitHub Actions variables, or the static Pages
+bundle. The equivalent direct Wrangler command is:
+
+```bash
+npx wrangler secret put DATABASE_URL --config web/worker/wrangler.jsonc
+```
+
+The Worker reads only the schema-qualified `infratimelapse` tables and exposes:
+
+- `GET /api/nodes`
+- `GET /api/corridors`
+- `GET /api/projects`
+
+These inventory responses are cached at the edge for five minutes. Deprecated
+entities are excluded. Database failures return bounded `502`/`503` responses
+without exposing the connection string or database error details.
 
 If Pages and the Worker use separate hostnames, set `ALLOWED_ORIGINS` in the
 Worker configuration to a comma-separated list of the exact Pages production
@@ -161,7 +183,9 @@ The setup creates or updates:
   token;
 - the Cloud Run job, authenticated read service, and Scheduler job.
 
-The Worker is the public delivery boundary. The Cloud Run read service rejects
+The Worker is the public delivery boundary. `DATABASE_URL` remains a Worker
+secret, and all public database queries are fixed, schema-qualified, read-only
+statements. The Cloud Run read service rejects
 requests without the shared origin token. It returns only the aggregate capture
 fields needed by the page and PNG objects under the `captures/` prefix. It
 never exposes metadata objects, bucket credentials, or direct object URIs.
