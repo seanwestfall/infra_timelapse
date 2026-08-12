@@ -20,6 +20,11 @@ class FakeBlob:
         self.content_type = None
         self.etag = "test-etag"
 
+    @property
+    def size(self):
+        value = self.bucket.objects.get(self.name, b"")
+        return len(value.encode("utf-8") if isinstance(value, str) else value)
+
     def download_as_text(self, encoding="utf-8"):
         value = self.bucket.objects[self.name]
         return value.decode(encoding) if isinstance(value, bytes) else value
@@ -117,6 +122,33 @@ class CaptureIndexTests(unittest.TestCase):
             public_file["image_url"], f"/api/captures/{OBJECT_NAME}"
         )
 
+    def test_storage_statistics_count_live_bucket_objects_and_providers(self):
+        private_manifest = manifest()
+        private_manifest["provider"] = "usgs_landsat"
+        private_manifest["failure_count"] = 2
+        private_index = {
+            "schema_version": "1.0.0",
+            "capture_count": 1,
+            "manifests": [private_manifest],
+        }
+        bucket = FakeBucket(
+            {
+                OBJECT_NAME: b"PNGDATA",
+                "index.json": json.dumps(private_index),
+                f"manifests/{RUN_ID}.json": json.dumps(private_manifest),
+            }
+        )
+
+        result = capture_api.storage_statistics(bucket, private_index)
+
+        self.assertEqual(result["storage"]["object_count"], 3)
+        self.assertEqual(result["storage"]["capture_object_count"], 1)
+        self.assertEqual(result["storage"]["capture_bytes"], 7)
+        landsat = result["captures"]["providers"]["usgs_landsat"]
+        self.assertEqual(landsat["run_count"], 1)
+        self.assertEqual(landsat["image_count"], 1)
+        self.assertEqual(landsat["failure_count"], 2)
+
     def test_capture_object_validation_rejects_other_bucket_paths(self):
         self.assertTrue(capture_api.safe_capture_object(OBJECT_NAME))
         self.assertFalse(capture_api.safe_capture_object("metadata.json"))
@@ -147,6 +179,7 @@ class CaptureIndexTests(unittest.TestCase):
                 capture_api.ORIGIN_AUTH_HEADER: "test-origin-token",
             }
             index_response = client.get("/api/index", headers=headers)
+            stats_response = client.get("/api/stats", headers=headers)
             image_response = client.get(
                 f"/api/captures/{OBJECT_NAME}", headers=headers
             )
@@ -158,6 +191,8 @@ class CaptureIndexTests(unittest.TestCase):
                 os.environ["ORIGIN_AUTH_TOKEN"] = previous_token
 
         self.assertEqual(index_response.status_code, 200)
+        self.assertEqual(stats_response.status_code, 200)
+        self.assertEqual(stats_response.json["storage"]["capture_bytes"], 7)
         self.assertNotIn(b"gs://", index_response.data)
         self.assertEqual(image_response.status_code, 200)
         self.assertEqual(image_response.data, b"PNGDATA")

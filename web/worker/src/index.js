@@ -1,4 +1,5 @@
 const INDEX_PATH = "/api/index";
+const STATS_PATH = "/api/stats";
 const CAPTURE_PREFIX = "/api/captures/";
 const ORIGIN_AUTH_HEADER = "X-Infra-Timelapse-Origin-Token";
 const FORWARDED_REQUEST_HEADERS = ["accept", "if-none-match", "range"];
@@ -70,6 +71,9 @@ function routeFor(url) {
   if (url.pathname === INDEX_PATH) {
     return { kind: "index", upstreamPath: INDEX_PATH };
   }
+  if (url.pathname === STATS_PATH) {
+    return { kind: "stats", upstreamPath: STATS_PATH };
+  }
   const objectName = capturePath(url.pathname);
   if (objectName) {
     const encoded = objectName.split("/").map(encodeURIComponent).join("/");
@@ -92,9 +96,9 @@ function allowedOrigin(request, env) {
 }
 
 function cacheControl(kind) {
-  return kind === "index"
-    ? "public, max-age=60, s-maxage=300"
-    : "public, max-age=31536000, immutable";
+  if (kind === "index") return "public, max-age=60, s-maxage=300";
+  if (kind === "stats") return "public, max-age=300, s-maxage=900";
+  return "public, max-age=31536000, immutable";
 }
 
 function publicHeaders(upstreamHeaders, kind, corsOrigin) {
@@ -191,7 +195,7 @@ export async function handleRequest(request, env, ctx = {}, cache = null) {
     return jsonResponse({ error: "Capture service unavailable" }, 502);
   }
 
-  if (upstreamResponse.status === 404) {
+  if (upstreamResponse.status === 404 && route.kind === "capture") {
     return jsonResponse({ error: "Capture not found" }, 404);
   }
   if (![200, 206, 304].includes(upstreamResponse.status)) {

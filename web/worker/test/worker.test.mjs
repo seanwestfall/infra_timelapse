@@ -76,6 +76,35 @@ test("forwards only allowlisted paths and safe headers", async () => {
   }
 });
 
+test("forwards and caches backend statistics", async () => {
+  const originalFetch = globalThis.fetch;
+  const cache = memoryCache();
+  let calls = 0;
+  globalThis.fetch = async (url) => {
+    calls += 1;
+    assert.equal(String(url), "https://capture-api.example.run.app/api/stats");
+    return new Response('{"storage":{"total_bytes":42}}', {
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+  try {
+    const url = "https://infra.example/api/stats";
+    const ctx = context();
+    const first = await handleRequest(new Request(url), ENV, ctx, cache);
+    await Promise.all(ctx.writes);
+    const second = await handleRequest(new Request(url), ENV, context(), cache);
+    assert.equal((await first.json()).storage.total_bytes, 42);
+    assert.equal((await second.json()).storage.total_bytes, 42);
+    assert.equal(calls, 1);
+    assert.equal(
+      second.headers.get("cache-control"),
+      "public, max-age=300, s-maxage=900",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("rejects traversal, non-PNG paths, and unsupported methods", async () => {
   const cases = [
     "/api/captures/captures/run/../secret.png",

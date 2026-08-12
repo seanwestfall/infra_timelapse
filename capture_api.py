@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import Any
 from urllib.parse import quote
@@ -125,6 +126,95 @@ def public_capture_index(
     } | {"manifests": manifests}
 
 
+def manifest_provider(manifest: dict[str, Any]) -> str:
+    """Return a stable provider identifier for current and legacy manifests."""
+    provider = str(manifest.get("provider") or "").strip()
+    if provider:
+        return provider
+    run_id = str(manifest.get("run_id") or "")
+    for candidate in (
+        "google_static_maps",
+        "copernicus_sentinel_2",
+        "usgs_landsat",
+    ):
+        if run_id.startswith(f"{candidate}-"):
+            return candidate
+    return "google_static_maps"
+
+
+def storage_statistics(
+    bucket: Any, capture_index: dict[str, Any]
+) -> dict[str, Any]:
+    """Summarize live bucket objects and capture manifests by provider."""
+    object_count = 0
+    total_bytes = 0
+    capture_object_count = 0
+    capture_bytes = 0
+    for blob in bucket.list_blobs():
+        size = int(blob.size or 0)
+        object_count += 1
+        total_bytes += size
+        if blob.name.startswith("captures/"):
+            capture_object_count += 1
+            capture_bytes += size
+
+    providers: dict[str, dict[str, Any]] = {}
+    for manifest in capture_index.get("manifests", []):
+        if not isinstance(manifest, dict):
+            continue
+        provider = manifest_provider(manifest)
+        provider_stats = providers.setdefault(
+            provider,
+            {
+                "run_count": 0,
+                "image_count": 0,
+                "failure_count": 0,
+                "recorded_image_bytes": 0,
+                "latest_run_at": None,
+            },
+        )
+        files = manifest.get("files", [])
+        if not isinstance(files, list):
+            files = []
+        provider_stats["run_count"] += 1
+        provider_stats["image_count"] += int(
+            manifest.get("image_count", len(files)) or 0
+        )
+        provider_stats["failure_count"] += int(
+            manifest.get("failure_count", 0) or 0
+        )
+        provider_stats["recorded_image_bytes"] += sum(
+            int(file_record.get("bytes", 0) or 0)
+            for file_record in files
+            if isinstance(file_record, dict)
+        )
+        generated_at = str(manifest.get("generated_at") or "")
+        if generated_at and (
+            provider_stats["latest_run_at"] is None
+            or generated_at > provider_stats["latest_run_at"]
+        ):
+            provider_stats["latest_run_at"] = generated_at
+
+    return {
+        "schema_version": "1.0.0",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "storage": {
+            "object_count": object_count,
+            "total_bytes": total_bytes,
+            "total_mib": round(total_bytes / (1024 * 1024), 3),
+            "capture_object_count": capture_object_count,
+            "capture_bytes": capture_bytes,
+            "capture_mib": round(capture_bytes / (1024 * 1024), 3),
+            "supporting_object_bytes": total_bytes - capture_bytes,
+        },
+        "captures": {
+            "manifest_count": len(capture_index.get("manifests", [])),
+            "image_count": int(capture_index.get("capture_count", 0) or 0),
+            "providers": providers,
+        },
+    }
+
+
 def cache_headers(response: Response, value: str) -> Response:
     response.headers["Cache-Control"] = value
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -156,6 +246,22 @@ def capture_index() -> Response:
 
     return cache_headers(
         jsonify(result), "public, max-age=60, s-maxage=300"
+    )
+
+
+@app.get("/api/stats")
+def backend_stats() -> Response:
+    try:
+        bucket = get_bucket()
+        result = storage_statistics(bucket, load_capture_index(bucket))
+    except Exception:
+        app.logger.exception("Could not calculate backend statistics")
+        return cache_headers(
+            jsonify({"error": "Backend statistics unavailable"}), "no-store"
+        ), 503
+
+    return cache_headers(
+        jsonify(result), "public, max-age=300, s-maxage=900"
     )
 
 
