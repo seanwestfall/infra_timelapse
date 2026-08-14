@@ -8,8 +8,8 @@
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
-<link href="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.css" rel="stylesheet" />
-<script src="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.js"></script>
 <style>
   body { margin:0; font-family:system-ui, sans-serif; }
   #map { position:relative; min-width:0; height:100%; }
@@ -25,6 +25,13 @@
   .playback-speed button[aria-pressed="true"] { background:#14b8a6; box-shadow:0 0 0 2px #5eead4 inset; }
   .image-stage { min-height:240px; background:#111827; border-radius:.5rem; overflow:hidden; }
   .image-stage img { min-height:240px; max-height:58vh; }
+  .satellite-card { position:absolute; z-index:3; top:.5rem; left:.5rem; width:150px; overflow:hidden; border:1px solid rgb(94 234 212 / .55); border-radius:.5rem; background:rgb(15 23 42 / .9); box-shadow:0 8px 24px rgb(0 0 0 / .35); backdrop-filter:blur(6px); }
+  .satellite-card select { width:100%; border:0; border-bottom:1px solid rgb(71 85 105 / .8); padding:.35rem .45rem; background:#0f172a; color:#f8fafc; font-size:.7rem; font-weight:600; }
+  #satellite-globe { width:100%; height:112px; background:#020617; }
+  #satellite-status { min-height:2rem; padding:.3rem .45rem; color:#cbd5e1; font-size:.625rem; line-height:1.25; }
+  .satellite-card .maplibregl-canvas { cursor:default; }
+  .image-stage:fullscreen .satellite-card { width:210px; }
+  .image-stage:fullscreen #satellite-globe { height:160px; }
   @media (max-width:767px) {
     #map { min-height:45vh; }
     .sidebar { position:fixed; z-index:10; left:0; right:0; bottom:0; max-width:none; max-height:65vh; border-radius:1rem 1rem 0 0; }
@@ -64,6 +71,17 @@
       <section id="viewer-section" class="hidden">
         <div id="image-stage" class="image-stage relative flex items-center justify-center">
           <img id="main-image" src="" alt="Timelapse frame" class="w-full object-contain cursor-pointer" />
+          <section id="satellite-card" class="satellite-card" aria-label="Current satellite ground position">
+            <label for="satellite-select" class="sr-only">Tracked satellite</label>
+            <select id="satellite-select" title="Select an Earth-observation satellite to track">
+              <option value="60989">Sentinel-2C · live</option>
+              <option value="42063">Sentinel-2B · live</option>
+              <option value="49260">Landsat 9 · live</option>
+              <option value="39084">Landsat 8 · live</option>
+            </select>
+            <div id="satellite-globe" role="img" aria-label="Globe showing the selected satellite's current ground position"></div>
+            <p id="satellite-status" role="status">Loading current orbital elements…</p>
+          </section>
           <div id="loading-indicator" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
             <span class="animate-spin border-4 border-teal-500 border-t-transparent rounded-full w-8 h-8"></span>
           </div>
@@ -131,6 +149,22 @@ let currentTargetId = "";
 let currentFrame = 0;
 let playbackTimer;
 let playbackSpeed = 1;
+const TRACKED_SATELLITES = new Map([
+  ["39084", "Landsat 8"],
+  ["49260", "Landsat 9"],
+  ["42063", "Sentinel-2B"],
+  ["60989", "Sentinel-2C"],
+]);
+let orbitLibraryPromise;
+let orbitLibrary;
+let satelliteMap;
+let satelliteMapReady = false;
+let satelliteSatrec;
+let satellitePositionTimer;
+let satelliteRefreshTimer;
+let satelliteRequestVersion = 0;
+let latestSatellitePosition;
+let satelliteElementsEpoch = "";
 
 const map = new maplibregl.Map({
   container: "map",
@@ -140,6 +174,151 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl());
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 80, unit: "metric" }));
+
+function loadOrbitLibrary() {
+  orbitLibraryPromise ||= import("https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/+esm");
+  return orbitLibraryPromise;
+}
+
+function satelliteElementsUrl(noradId) {
+  const queryApi = new URLSearchParams(location.search).get("api");
+  const configuredIndex = document.querySelector('meta[name="timelapse-index-url"]')?.content;
+  const apiOrigin = new URL(queryApi || configuredIndex || document.baseURI, document.baseURI).origin;
+  return new URL(`/api/satellites/${noradId}/elements`, apiOrigin).href;
+}
+
+function ensureSatelliteGlobe() {
+  if (satelliteMap) {
+    window.requestAnimationFrame(() => satelliteMap.resize());
+    return;
+  }
+  satelliteMap = new maplibregl.Map({
+    container: "satellite-globe",
+    style: "https://demotiles.maplibre.org/style.json",
+    center: [0, 15],
+    zoom: 0.35,
+    projection: { type: "globe" },
+    interactive: false,
+    attributionControl: false,
+    renderWorldCopies: false,
+  });
+  satelliteMap.on("load", () => {
+    satelliteMap.addSource("satellite-position", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+    satelliteMap.addLayer({
+      id: "satellite-position-halo",
+      type: "circle",
+      source: "satellite-position",
+      paint: {
+        "circle-radius": 10,
+        "circle-color": "#fb923c",
+        "circle-opacity": 0.25,
+      },
+    });
+    satelliteMap.addLayer({
+      id: "satellite-position-dot",
+      type: "circle",
+      source: "satellite-position",
+      paint: {
+        "circle-radius": 5,
+        "circle-color": "#fb923c",
+        "circle-stroke-color": "#fff7ed",
+        "circle-stroke-width": 2,
+      },
+    });
+    satelliteMapReady = true;
+    if (latestSatellitePosition) updateSatelliteGlobe(latestSatellitePosition);
+  });
+}
+
+function updateSatelliteGlobe(position) {
+  latestSatellitePosition = position;
+  if (!satelliteMapReady) return;
+  satelliteMap.getSource("satellite-position").setData({
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [position.longitude, position.latitude] },
+      properties: {},
+    }],
+  });
+  satelliteMap.jumpTo({
+    center: [position.longitude, position.latitude],
+    zoom: 0.65,
+  });
+}
+
+function updateSatellitePosition() {
+  if (!orbitLibrary || !satelliteSatrec) return;
+  const now = new Date();
+  const propagated = orbitLibrary.propagate(satelliteSatrec, now);
+  if (!propagated?.position) {
+    $("satellite-status").textContent = "Position propagation failed.";
+    return;
+  }
+  const geodetic = orbitLibrary.eciToGeodetic(
+    propagated.position,
+    orbitLibrary.gstime(now),
+  );
+  const position = {
+    longitude: orbitLibrary.degreesLong(geodetic.longitude),
+    latitude: orbitLibrary.degreesLat(geodetic.latitude),
+    altitudeKm: geodetic.height,
+  };
+  updateSatelliteGlobe(position);
+  const name = TRACKED_SATELLITES.get($("satellite-select").value) || "Satellite";
+  $("satellite-status").textContent =
+    `${name} · ${position.latitude.toFixed(2)}°, ${position.longitude.toFixed(2)}° · ${position.altitudeKm.toFixed(0)} km`;
+  $("satellite-status").title = `Predicted from CelesTrak OMM elements${satelliteElementsEpoch ? ` with epoch ${satelliteElementsEpoch}` : ""}.`;
+}
+
+async function selectSatellite(noradId) {
+  if (!TRACKED_SATELLITES.has(String(noradId))) return;
+  const selectedId = String(noradId);
+  $("satellite-select").value = selectedId;
+  const version = ++satelliteRequestVersion;
+  $("satellite-status").textContent = `Loading ${TRACKED_SATELLITES.get(selectedId)} orbit…`;
+  ensureSatelliteGlobe();
+  try {
+    const [payload, library] = await Promise.all([
+      fetchJson(satelliteElementsUrl(selectedId)),
+      loadOrbitLibrary(),
+    ]);
+    if (version !== satelliteRequestVersion) return;
+    orbitLibrary = library;
+    satelliteSatrec = library.json2satrec(payload.elements);
+    satelliteElementsEpoch = payload.elements.EPOCH || "";
+    window.clearInterval(satellitePositionTimer);
+    satellitePositionTimer = window.setInterval(updateSatellitePosition, 1000);
+    updateSatellitePosition();
+    window.clearTimeout(satelliteRefreshTimer);
+    satelliteRefreshTimer = window.setTimeout(() => selectSatellite(selectedId), 10 * 60 * 1000);
+  } catch (error) {
+    console.error(error);
+    if (version === satelliteRequestVersion) {
+      $("satellite-status").textContent = "Live orbit unavailable.";
+      $("satellite-status").title = error.message;
+    }
+  }
+}
+
+function captureSatelliteId(capture) {
+  const explicitId = String(capture.satelliteNoradId || "");
+  if (TRACKED_SATELLITES.has(explicitId)) return explicitId;
+  const descriptor = [capture.spacecraft, capture.platform, capture.provider]
+    .filter(Boolean)
+    .join(" ")
+    .toUpperCase();
+  const aliases = [
+    [/\b(?:SENTINEL[-_ ]?2C|S2C)\b/, "60989"],
+    [/\b(?:SENTINEL[-_ ]?2B|S2B)\b/, "42063"],
+    [/\b(?:LANDSAT[-_ ]?9|LC09)\b/, "49260"],
+    [/\b(?:LANDSAT[-_ ]?8|LC08)\b/, "39084"],
+  ];
+  return aliases.find(([pattern]) => pattern.test(descriptor))?.[1] || "";
+}
 
 function debounce(fn, delay) {
   let timer;
@@ -202,6 +381,8 @@ function localImageUrls(relativePath, targetId) {
 
 function normalizeCapture(record, inherited = {}) {
   const merged = { ...inherited, ...record };
+  const scene = merged.scene_metadata || merged.sceneMetadata || {};
+  const satellite = typeof merged.satellite === "object" ? merged.satellite : {};
   const relativePath = merged.relative_path || merged.relativePath || merged.path || "";
   const targetId = pathTargetId(relativePath) || merged.target_id || merged.targetId;
   const remoteUrl = browserUrl(
@@ -220,6 +401,10 @@ function normalizeCapture(record, inherited = {}) {
     relativePath,
     runId: merged.run_id || merged.runId || "",
     capturedAt: merged.captured_at || merged.capturedAt || merged.timestamp || merged.date || pathDate || merged.generated_at || "",
+    provider: merged.provider || scene.provider || "",
+    platform: merged.platform || scene.platform || scene.collection || "",
+    spacecraft: merged.spacecraft || scene.spacecraft || scene.spacecraft_name || "",
+    satelliteNoradId: merged.norad_id || merged.noradId || satellite.norad_id || satellite.noradId || scene.norad_id || "",
   };
 }
 
@@ -235,6 +420,11 @@ function collectCaptures(value, inherited = {}, output = []) {
     run_id: value.run_id || value.runId || inherited.run_id,
     generated_at: value.generated_at || value.generatedAt || inherited.generated_at,
     target_id: value.target_id || value.targetId || inherited.target_id,
+    provider: value.provider || inherited.provider,
+    platform: value.platform || inherited.platform,
+    spacecraft: value.spacecraft || inherited.spacecraft,
+    norad_id: value.norad_id || value.noradId || inherited.norad_id,
+    scene_metadata: value.scene_metadata || value.sceneMetadata || inherited.scene_metadata,
   };
   const capture = normalizeCapture(value, nextInherited);
   if (capture) output.push(capture);
@@ -394,6 +584,10 @@ function setFrame(index) {
   $("capture-date").textContent = capture.capturedAt || "Date unavailable";
   $("capture-date").dateTime = capture.capturedAt;
   $("capture-run").textContent = capture.runId ? `Run ${capture.runId}` : "";
+  const sourceSatelliteId = captureSatelliteId(capture);
+  if (sourceSatelliteId && $("satellite-select").value !== sourceSatelliteId) {
+    selectSatellite(sourceSatelliteId);
+  }
   const requestKey = `${currentTargetId}:${index}:${Date.now()}`;
   const candidates = capture.imageUrls?.length ? capture.imageUrls : [capture.imageUrl];
   image.dataset.requestKey = requestKey;
@@ -435,6 +629,11 @@ function openTarget(id) {
   $("frame-slider").max = String(Math.max(0, currentCaptures.length - 1));
   updateControlState();
   setFrame(Math.max(0, currentCaptures.length - 1));
+  ensureSatelliteGlobe();
+  const currentCapture = currentCaptures[currentFrame];
+  if (!satelliteSatrec && !captureSatelliteId(currentCapture || {})) {
+    selectSatellite($("satellite-select").value);
+  }
 }
 
 function previousFrame() {
@@ -523,6 +722,7 @@ $("next-frame").addEventListener("click", nextFrame);
 $("frame-slider").addEventListener("input", (event) => setFrame(Number(event.target.value)));
 $("play-pause").addEventListener("click", () => playbackTimer ? stopPlayback() : startPlayback());
 $("target-select").addEventListener("change", (event) => event.target.value && openTarget(event.target.value));
+$("satellite-select").addEventListener("change", (event) => selectSatellite(event.target.value));
 document.querySelectorAll(".playback-speed button").forEach((button) => button.addEventListener("click", () => {
   playbackSpeed = Number(button.dataset.speed);
   document.querySelectorAll(".playback-speed button").forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));

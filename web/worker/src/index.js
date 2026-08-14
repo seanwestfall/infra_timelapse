@@ -2,6 +2,14 @@ import { DATABASE_PATHS, queryInventory } from "./database.js";
 
 const INDEX_PATH = "/api/index";
 const CAPTURE_PREFIX = "/api/captures/";
+const SATELLITE_PREFIX = "/api/satellites/";
+const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php";
+const SATELLITES = new Map([
+  ["39084", "Landsat 8"],
+  ["49260", "Landsat 9"],
+  ["42063", "Sentinel-2B"],
+  ["60989", "Sentinel-2C"],
+]);
 const ORIGIN_AUTH_HEADER = "X-Infra-Timelapse-Origin-Token";
 const FORWARDED_REQUEST_HEADERS = ["accept", "if-none-match", "range"];
 const FORWARDED_RESPONSE_HEADERS = [
@@ -83,6 +91,13 @@ function routeFor(url) {
   return null;
 }
 
+function satelliteId(pathname) {
+  if (!pathname.startsWith(SATELLITE_PREFIX)) return null;
+  const match = pathname.match(/^\/api\/satellites\/(\d{5})\/elements$/);
+  if (!match || !SATELLITES.has(match[1])) return null;
+  return match[1];
+}
+
 function allowedOrigin(request, env) {
   const origin = request.headers.get("Origin");
   if (!origin) return { allowed: true, origin: null };
@@ -110,6 +125,94 @@ function databaseHeaders(corsOrigin) {
     headers.Vary = "Origin";
   }
   return headers;
+}
+
+function satelliteHeaders() {
+  return {
+    "Cache-Control": "public, max-age=300, s-maxage=7200, stale-if-error=86400",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  };
+}
+
+function responseWithCors(response, corsOrigin, method = "GET") {
+  const headers = new Headers(response.headers);
+  if (corsOrigin) {
+    headers.set("Access-Control-Allow-Origin", corsOrigin);
+    headers.set("Vary", "Origin");
+  }
+  return new Response(method === "HEAD" ? null : response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function satelliteResponse(
+  request,
+  ctx,
+  cache,
+  noradId,
+  corsOrigin,
+  fetchSatelliteElements = fetch,
+) {
+  const cacheKey = new Request(
+    `https://if-api.internal${SATELLITE_PREFIX}${noradId}/elements`,
+    { method: "GET" },
+  );
+  if (cache) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return responseWithCors(cached, corsOrigin, request.method);
+  }
+
+  const upstreamUrl = new URL(CELESTRAK_BASE);
+  upstreamUrl.searchParams.set("CATNR", noradId);
+  upstreamUrl.searchParams.set("FORMAT", "JSON");
+  let upstream;
+  try {
+    upstream = await fetchSatelliteElements(upstreamUrl, {
+      headers: { Accept: "application/json" },
+      redirect: "error",
+    });
+  } catch (error) {
+    console.error("CelesTrak request failed", error);
+    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+  }
+  if (!upstream.ok) {
+    console.error("CelesTrak returned", upstream.status);
+    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+  }
+
+  let records;
+  try {
+    records = await upstream.json();
+  } catch (error) {
+    console.error("CelesTrak returned invalid JSON", error);
+    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+  }
+  const elements = Array.isArray(records) ? records[0] : null;
+  if (!elements || String(elements.NORAD_CAT_ID) !== noradId || !elements.EPOCH) {
+    console.error("CelesTrak returned unexpected elements");
+    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+  }
+
+  const response = jsonResponse(
+    {
+      source: "CelesTrak",
+      norad_id: Number(noradId),
+      name: SATELLITES.get(noradId),
+      fetched_at: new Date().toISOString(),
+      elements,
+    },
+    200,
+    satelliteHeaders(),
+  );
+  if (cache) {
+    const cacheWrite = cache.put(cacheKey, response.clone());
+    if (ctx.waitUntil) ctx.waitUntil(cacheWrite);
+    else await cacheWrite;
+  }
+  return responseWithCors(response, corsOrigin, request.method);
 }
 
 async function databaseResponse(
@@ -205,8 +308,11 @@ export async function handleRequest(
   }
 
   const databaseKind = DATABASE_PATHS.get(incomingUrl.pathname);
+  const selectedSatelliteId = satelliteId(incomingUrl.pathname);
   const route = routeFor(incomingUrl);
-  if (!route && !databaseKind) return jsonResponse({ error: "Not found" }, 404);
+  if (!route && !databaseKind && !selectedSatelliteId) {
+    return jsonResponse({ error: "Not found" }, 404);
+  }
 
   const cors = allowedOrigin(request, env);
   if (!cors.allowed) return jsonResponse({ error: "Origin not allowed" }, 403);
@@ -220,6 +326,17 @@ export async function handleRequest(
       databaseKind,
       cors.origin,
       dependencies.createDatabaseClient,
+    );
+  }
+
+  if (selectedSatelliteId) {
+    return satelliteResponse(
+      request,
+      ctx,
+      cache,
+      selectedSatelliteId,
+      cors.origin,
+      dependencies.fetchSatelliteElements,
     );
   }
 

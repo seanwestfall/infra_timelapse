@@ -108,10 +108,17 @@ The Worker reads only the schema-qualified `infratimelapse` tables and exposes:
 - `GET /api/nodes`
 - `GET /api/corridors`
 - `GET /api/projects`
+- `GET /api/satellites/{norad_id}/elements`
 
 These inventory responses are cached at the edge for five minutes. Deprecated
 entities are excluded. Database failures return bounded `502`/`503` responses
 without exposing the connection string or database error details.
+
+The satellite-elements demo accepts only Sentinel-2B (`42063`), Sentinel-2C
+(`60989`), Landsat 8 (`39084`), and Landsat 9 (`49260`). The Worker retrieves
+public OMM JSON from CelesTrak and caches successful responses for two hours;
+the browser propagates those elements locally for the live globe marker. No
+satellite API key is required. Do not lower the upstream refresh interval.
 
 If Pages and the Worker use separate hostnames, set `ALLOWED_ORIGINS` in the
 Worker configuration to a comma-separated list of the exact Pages production

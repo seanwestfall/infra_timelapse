@@ -21,6 +21,10 @@ class WebWiringTests(unittest.TestCase):
         self.assertIn(
             'fetchJson("./infra_timelapse_ports_corridors.json")', html
         )
+        self.assertIn('id="satellite-globe"', html)
+        self.assertIn('id="satellite-select"', html)
+        self.assertIn("/api/satellites/${noradId}/elements", html)
+        self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
 
     def test_pages_build_contains_real_entry_point_and_inventory(self):
@@ -53,6 +57,8 @@ class WebWiringTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("env.API_BASE_URL", worker)
         self.assertIn("env.ORIGIN_AUTH_TOKEN", worker)
+        self.assertIn('const CELESTRAK_BASE = "https://celestrak.org/', worker)
+        self.assertIn("SATELLITE_PREFIX", worker)
         self.assertNotIn("storage.googleapis.com", worker)
 
 
