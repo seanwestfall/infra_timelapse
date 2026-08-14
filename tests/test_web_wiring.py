@@ -23,6 +23,17 @@ class WebWiringTests(unittest.TestCase):
         )
         self.assertIn('id="satellite-globe"', html)
         self.assertIn('id="satellite-select"', html)
+        map_start = html.index('<div id="map"')
+        map_end = html.index("</div>", html.index('id="satellite-status"'))
+        image_stage_start = html.index('<div id="image-stage"')
+        self.assertLess(map_start, html.index('id="satellite-card"'))
+        self.assertLess(html.index('id="satellite-card"'), map_end)
+        self.assertLess(map_end, image_stage_start)
+        self.assertIn(
+            'import * as maplibregl from "https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"',
+            html,
+        )
+        self.assertNotIn("dist/maplibre-gl.js", html)
         self.assertIn("/api/satellites/${noradId}/elements", html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
