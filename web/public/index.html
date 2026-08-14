@@ -9,7 +9,6 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
 <link href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css" rel="stylesheet" />
-<script src="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.js"></script>
 <style>
   body { margin:0; font-family:system-ui, sans-serif; }
   #map { position:relative; min-width:0; height:100%; }
@@ -30,8 +29,6 @@
   #satellite-globe { width:100%; height:112px; background:#020617; }
   #satellite-status { min-height:2rem; padding:.3rem .45rem; color:#cbd5e1; font-size:.625rem; line-height:1.25; }
   .satellite-card .maplibregl-canvas { cursor:default; }
-  .image-stage:fullscreen .satellite-card { width:210px; }
-  .image-stage:fullscreen #satellite-globe { height:160px; }
   @media (max-width:767px) {
     #map { min-height:45vh; }
     .sidebar { position:fixed; z-index:10; left:0; right:0; bottom:0; max-width:none; max-height:65vh; border-radius:1rem 1rem 0 0; }
@@ -48,7 +45,19 @@
 
 <div class="flex h-[calc(100vh-4rem)]">
   <!-- Map -->
-  <div id="map" class="flex-1"></div>
+  <div id="map" class="flex-1">
+    <section id="satellite-card" class="satellite-card" aria-label="Current satellite ground position">
+      <label for="satellite-select" class="sr-only">Tracked satellite</label>
+      <select id="satellite-select" title="Select an Earth-observation satellite to track">
+        <option value="60989">Sentinel-2C · live</option>
+        <option value="42063">Sentinel-2B · live</option>
+        <option value="49260">Landsat 9 · live</option>
+        <option value="39084">Landsat 8 · live</option>
+      </select>
+      <div id="satellite-globe" role="img" aria-label="Globe showing the selected satellite's current ground position"></div>
+      <p id="satellite-status" role="status">Loading current orbital elements…</p>
+    </section>
+  </div>
 
   <!-- Sidebar (hidden on mobile, toggled via button) -->
   <aside id="sidebar" class="sidebar hidden md:block">
@@ -71,17 +80,6 @@
       <section id="viewer-section" class="hidden">
         <div id="image-stage" class="image-stage relative flex items-center justify-center">
           <img id="main-image" src="" alt="Timelapse frame" class="w-full object-contain cursor-pointer" />
-          <section id="satellite-card" class="satellite-card" aria-label="Current satellite ground position">
-            <label for="satellite-select" class="sr-only">Tracked satellite</label>
-            <select id="satellite-select" title="Select an Earth-observation satellite to track">
-              <option value="60989">Sentinel-2C · live</option>
-              <option value="42063">Sentinel-2B · live</option>
-              <option value="49260">Landsat 9 · live</option>
-              <option value="39084">Landsat 8 · live</option>
-            </select>
-            <div id="satellite-globe" role="img" aria-label="Globe showing the selected satellite's current ground position"></div>
-            <p id="satellite-status" role="status">Loading current orbital elements…</p>
-          </section>
           <div id="loading-indicator" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
             <span class="animate-spin border-4 border-teal-500 border-t-transparent rounded-full w-8 h-8"></span>
           </div>
@@ -140,6 +138,8 @@
 </div>
 
 <script type="module">
+import * as maplibregl from "https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs";
+
 const $ = (id) => document.getElementById(id);
 const capturesByTarget = new Map();
 const targetsById = new Map();
