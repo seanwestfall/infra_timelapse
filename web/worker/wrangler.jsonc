@@ -7,7 +7,8 @@
   "preview_urls": true,
   "vars": {
     "API_BASE_URL": "https://infra-timelapse-index-aicxsrrc2a-uw.a.run.app",
-    "ALLOWED_ORIGINS": ""
+    "ALLOWED_ORIGINS": "https://infratimelapse.pages.dev",
+    "PAGES_PREVIEW_SUFFIX": ".infratimelapse.pages.dev"
   },
   // Runtime secrets are configured with `wrangler secret put`; they are never
   // stored in this file. Required secrets: ORIGIN_AUTH_TOKEN and DATABASE_URL.
