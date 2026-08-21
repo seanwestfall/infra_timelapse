@@ -8,7 +8,7 @@
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
-<link href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="https://unpkg.com/maplibre-gl@6.4.1/dist/maplibre-gl.css" rel="stylesheet" />
 <style>
   body { margin:0; font-family:system-ui, sans-serif; }
   #map { position:relative; min-width:0; height:100%; }
@@ -138,7 +138,7 @@
 </div>
 
 <script type="module">
-import * as maplibregl from "https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs";
+import * as maplibregl from "https://unpkg.com/maplibre-gl@6.4.1/dist/maplibre-gl.mjs";
 
 const $ = (id) => document.getElementById(id);
 const capturesByTarget = new Map();
@@ -155,6 +155,32 @@ const TRACKED_SATELLITES = new Map([
   ["42063", "Sentinel-2B"],
   ["60989", "Sentinel-2C"],
 ]);
+const SATELLITE_GLOBE_STYLE = {
+  version: 8,
+  projection: { type: "globe" },
+  sources: {
+    earth: {
+      type: "raster",
+      tiles: [
+        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg",
+      ],
+      tileSize: 256,
+      attribution: "Sentinel-2 cloudless — EOX",
+    },
+  },
+  layers: [{ id: "earth", type: "raster", source: "earth" }],
+  sky: {
+    "atmosphere-blend": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      0, 1,
+      5, 1,
+      7, 0,
+    ],
+  },
+  light: { anchor: "map", position: [1.5, 90, 80] },
+};
 let orbitLibraryPromise;
 let orbitLibrary;
 let satelliteMap;
@@ -194,10 +220,9 @@ function ensureSatelliteGlobe() {
   }
   satelliteMap = new maplibregl.Map({
     container: "satellite-globe",
-    style: "https://demotiles.maplibre.org/style.json",
+    style: SATELLITE_GLOBE_STYLE,
     center: [0, 15],
-    zoom: 0.35,
-    projection: { type: "globe" },
+    zoom: 0,
     interactive: false,
     attributionControl: false,
     renderWorldCopies: false,
@@ -746,7 +771,11 @@ $("search").addEventListener("input", debounce((event) => {
   const filtered = visibleTargets.filter((target) => [target.name, ...(target.aliases || [])].join(" ").toLocaleLowerCase().includes(term));
   updateMap(filtered);
 }, 250));
-map.on("load", () => { addMapLayers(); initialize(); });
+map.on("load", () => {
+  addMapLayers();
+  ensureSatelliteGlobe();
+  initialize();
+});
 </script>
 </body>
 </html>

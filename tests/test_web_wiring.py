@@ -30,10 +30,15 @@ class WebWiringTests(unittest.TestCase):
         self.assertLess(html.index('id="satellite-card"'), map_end)
         self.assertLess(map_end, image_stage_start)
         self.assertIn(
-            'import * as maplibregl from "https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"',
+            'import * as maplibregl from "https://unpkg.com/maplibre-gl@6.4.1/dist/maplibre-gl.mjs"',
             html,
         )
         self.assertNotIn("dist/maplibre-gl.js", html)
+        self.assertIn("const SATELLITE_GLOBE_STYLE", html)
+        self.assertIn('projection: { type: "globe" }', html)
+        self.assertIn('"atmosphere-blend"', html)
+        self.assertIn("style: SATELLITE_GLOBE_STYLE", html)
+        self.assertIn("addMapLayers();\n  ensureSatelliteGlobe();", html)
         self.assertIn("/api/satellites/${noradId}/elements", html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
