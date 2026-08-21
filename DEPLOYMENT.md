@@ -20,10 +20,9 @@ repository run the complete test/build suite and deploy only the static Pages
 frontend; they never deploy the production API Worker.
 
 Cloudflare Pages publishes an immutable deployment URL and a moving branch
-alias. For example, `codex/reconstruction-theme-preview` is available at
-`codex-reconstruction-theme-preview.<pages-project>.pages.dev`. The workflow
-adds that branch alias to its GitHub Actions job summary. Production remains
-restricted to pushes on `main`.
+alias. The workflow reports Cloudflare's returned deployment URL in its GitHub
+Actions job summary rather than predicting an alias, because Pages may shorten
+long branch names. Production remains restricted to pushes on `main`.
 
 Recommended feature flow:
 
