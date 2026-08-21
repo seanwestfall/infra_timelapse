@@ -8,6 +8,7 @@ const ENV = {
   ORIGIN_AUTH_TOKEN: "origin-secret",
   DATABASE_URL: "postgresql://inventory.example/test",
   ALLOWED_ORIGINS: "https://infra.example,https://preview.example",
+  PAGES_PREVIEW_SUFFIX: ".infratimelapse.pages.dev",
 };
 
 function context() {
@@ -106,6 +107,42 @@ test("rejects unapproved cross-origin requests", async () => {
     ENV,
   );
   assert.equal(response.status, 403);
+});
+
+test("allows only HTTPS preview subdomains for the configured Pages project", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{"manifests":[]}');
+  try {
+    const allowed = await handleRequest(
+      new Request("https://api.example/api/index", {
+        headers: {
+          Origin: "https://feature-abc.infratimelapse.pages.dev",
+        },
+      }),
+      ENV,
+    );
+    assert.equal(allowed.status, 200);
+    assert.equal(
+      allowed.headers.get("access-control-allow-origin"),
+      "https://feature-abc.infratimelapse.pages.dev",
+    );
+
+    for (const origin of [
+      "http://feature-abc.infratimelapse.pages.dev",
+      "https://infratimelapse.pages.dev.evil.example",
+      "https://infratimelapse.pages.dev",
+    ]) {
+      const rejected = await handleRequest(
+        new Request("https://api.example/api/index", {
+          headers: { Origin: origin },
+        }),
+        { ...ENV, ALLOWED_ORIGINS: "" },
+      );
+      assert.equal(rejected.status, 403, origin);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("caches successful images but not upstream errors", async () => {

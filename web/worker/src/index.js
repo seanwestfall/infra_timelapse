@@ -105,7 +105,20 @@ function allowedOrigin(request, env) {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  return { allowed: allowed.includes(origin), origin };
+  let previewAllowed = false;
+  const previewSuffix = String(env.PAGES_PREVIEW_SUFFIX || "").trim();
+  if (previewSuffix.startsWith(".") && previewSuffix.length > 1) {
+    try {
+      const candidate = new URL(origin);
+      previewAllowed = candidate.protocol === "https:" &&
+        candidate.origin === origin &&
+        candidate.hostname.endsWith(previewSuffix) &&
+        candidate.hostname.length > previewSuffix.length;
+    } catch {
+      previewAllowed = false;
+    }
+  }
+  return { allowed: allowed.includes(origin) || previewAllowed, origin };
 }
 
 function cacheControl(kind) {
