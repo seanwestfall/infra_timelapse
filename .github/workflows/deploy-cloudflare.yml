@@ -62,25 +62,31 @@ jobs:
           EVENT_SHA: ${{ github.sha }}
           INPUT_PAGES: ${{ inputs.pages }}
         run: |
+          set -o pipefail
           pages_mode="${INPUT_PAGES:-auto}"
           worker_mode="always"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             pages_mode="always"
             worker_mode="never"
+            if [[ -z "${CLOUDFLARE_API_TOKEN}" || -z "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
+              pages_mode="never"
+              echo "::warning::Pages preview skipped: configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in the production environment."
+            fi
           fi
           bash deploy/deploy_cloudflare.sh \
             --pages "${pages_mode}" \
             --worker "${worker_mode}" \
             --base-ref "${EVENT_BEFORE}" \
-            --head-ref "${EVENT_SHA}"
+            --head-ref "${EVENT_SHA}" | tee "${RUNNER_TEMP}/cloudflare-deploy.log"
 
       - name: Publish preview address
         if: github.event_name == 'pull_request'
         env:
-          PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
-          PREVIEW_BRANCH: ${{ github.head_ref }}
+          DEPLOY_LOG: ${{ runner.temp }}/cloudflare-deploy.log
         run: |
-          branch_alias="$(printf '%s' "${PREVIEW_BRANCH}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g')"
-          project="${PAGES_PROJECT:-infra-timelapse}"
           echo "### Cloudflare Pages preview" >> "${GITHUB_STEP_SUMMARY}"
-          echo "https://${branch_alias}.${project}.pages.dev" >> "${GITHUB_STEP_SUMMARY}"
+          if preview_url="$(grep -Eo 'https://[a-z0-9-]+\.infratimelapse\.pages\.dev' "${DEPLOY_LOG}" | head -1)" && [[ -n "${preview_url}" ]]; then
+            echo "${preview_url}" >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "Preview credentials are not configured; tests and build still completed." >> "${GITHUB_STEP_SUMMARY}"
+          fi

@@ -6,7 +6,7 @@ PAGES_MODE="auto"
 WORKER_MODE="always"
 BASE_REF=""
 HEAD_REF="HEAD"
-PAGES_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-infra-timelapse}"
+PAGES_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-infratimelapse}"
 PAGES_BRANCH="${CLOUDFLARE_PAGES_BRANCH:-main}"
 
 usage() {
@@ -21,7 +21,7 @@ Options:
   --help                      Show this help.
 
 Environment:
-  CLOUDFLARE_PAGES_PROJECT    Pages project name (default: infra-timelapse).
+  CLOUDFLARE_PAGES_PROJECT    Pages project name (default: infratimelapse).
   CLOUDFLARE_PAGES_BRANCH     Pages deployment branch (default: main).
   TIMELAPSE_API_BASE          Optional HTTPS Worker origin for separate-host mode.
 EOF
