@@ -191,6 +191,7 @@ let satelliteRefreshTimer;
 let satelliteRequestVersion = 0;
 let latestSatellitePosition;
 let satelliteElementsEpoch = "";
+let satelliteTrailUpdatedAt = 0;
 
 const map = new maplibregl.Map({
   container: "map",
@@ -228,6 +229,21 @@ function ensureSatelliteGlobe() {
     renderWorldCopies: false,
   });
   satelliteMap.on("load", () => {
+    satelliteMap.addSource("satellite-orbit-trail", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+    satelliteMap.addLayer({
+      id: "satellite-orbit-trail",
+      type: "line",
+      source: "satellite-orbit-trail",
+      paint: {
+        "line-color": "#fb923c",
+        "line-width": 2,
+        "line-opacity": ["get", "opacity"],
+        "line-blur": 0.35,
+      },
+    });
     satelliteMap.addSource("satellite-position", {
       type: "geojson",
       data: { type: "FeatureCollection", features: [] },
@@ -255,7 +271,51 @@ function ensureSatelliteGlobe() {
     });
     satelliteMapReady = true;
     if (latestSatellitePosition) updateSatelliteGlobe(latestSatellitePosition);
+    if (satelliteSatrec) updateSatelliteOrbitTrail(new Date(), true);
   });
+}
+
+function satelliteCoordinates(date) {
+  const propagated = orbitLibrary.propagate(satelliteSatrec, date);
+  if (!propagated?.position) return null;
+  const geodetic = orbitLibrary.eciToGeodetic(
+    propagated.position,
+    orbitLibrary.gstime(date),
+  );
+  return {
+    longitude: orbitLibrary.degreesLong(geodetic.longitude),
+    latitude: orbitLibrary.degreesLat(geodetic.latitude),
+    altitudeKm: geodetic.height,
+  };
+}
+
+function updateSatelliteOrbitTrail(now, force = false) {
+  if (!satelliteMapReady || !orbitLibrary || !satelliteSatrec) return;
+  if (!force && now.getTime() - satelliteTrailUpdatedAt < 30_000) return;
+
+  const points = [];
+  const trailMinutes = 105;
+  for (let minutesAgo = trailMinutes; minutesAgo >= 0; minutesAgo -= 1) {
+    const date = new Date(now.getTime() - minutesAgo * 60_000);
+    const point = satelliteCoordinates(date);
+    if (point) points.push([point.longitude, point.latitude]);
+  }
+  const features = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (Math.abs(current[0] - previous[0]) > 180) continue;
+    features.push({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [previous, current] },
+      properties: { opacity: 0.08 + 0.72 * (index / points.length) },
+    });
+  }
+  satelliteMap.getSource("satellite-orbit-trail").setData({
+    type: "FeatureCollection",
+    features,
+  });
+  satelliteTrailUpdatedAt = now.getTime();
 }
 
 function updateSatelliteGlobe(position) {
@@ -278,20 +338,12 @@ function updateSatelliteGlobe(position) {
 function updateSatellitePosition() {
   if (!orbitLibrary || !satelliteSatrec) return;
   const now = new Date();
-  const propagated = orbitLibrary.propagate(satelliteSatrec, now);
-  if (!propagated?.position) {
+  const position = satelliteCoordinates(now);
+  if (!position) {
     $("satellite-status").textContent = "Position propagation failed.";
     return;
   }
-  const geodetic = orbitLibrary.eciToGeodetic(
-    propagated.position,
-    orbitLibrary.gstime(now),
-  );
-  const position = {
-    longitude: orbitLibrary.degreesLong(geodetic.longitude),
-    latitude: orbitLibrary.degreesLat(geodetic.latitude),
-    altitudeKm: geodetic.height,
-  };
+  updateSatelliteOrbitTrail(now);
   updateSatelliteGlobe(position);
   const name = TRACKED_SATELLITES.get($("satellite-select").value) || "Satellite";
   $("satellite-status").textContent =
@@ -315,6 +367,7 @@ async function selectSatellite(noradId) {
     orbitLibrary = library;
     satelliteSatrec = library.json2satrec(payload.elements);
     satelliteElementsEpoch = payload.elements.EPOCH || "";
+    satelliteTrailUpdatedAt = 0;
     window.clearInterval(satellitePositionTimer);
     satellitePositionTimer = window.setInterval(updateSatellitePosition, 1000);
     updateSatellitePosition();
