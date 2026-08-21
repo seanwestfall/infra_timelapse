@@ -21,6 +21,11 @@ class WebWiringTests(unittest.TestCase):
         )
         self.assertIn('id="satellite-globe"', html)
         self.assertIn('id="satellite-select"', html)
+        self.assertIn('id="theme-switcher"', html)
+        self.assertIn('data-theme="reconstruction"', html)
+        self.assertIn('data-theme="bri"', html)
+        self.assertIn('data-theme="ciit"', html)
+        self.assertIn("filterTargetsByTheme", html)
         map_start = html.index('<div id="map"')
         map_end = html.index("</div>", html.index('id="satellite-status"'))
         image_stage_start = html.index('<div id="image-stage"')
@@ -32,6 +37,7 @@ class WebWiringTests(unittest.TestCase):
             html,
         )
         self.assertNotIn("dist/maplibre-gl.js", html)
+        self.assertIn('versionPrefix = apiUrl.pathname.startsWith("/api/v1/")', html)
         self.assertIn("const SATELLITE_GLOBE_STYLE", html)
         self.assertIn('projection: { type: "globe" }', html)
         self.assertIn('"atmosphere-blend"', html)
@@ -42,7 +48,6 @@ class WebWiringTests(unittest.TestCase):
         self.assertIn("function updateSatelliteOrbitTrail", html)
         self.assertIn("const trailMinutes = 105", html)
         self.assertIn('"line-opacity": ["get", "opacity"]', html)
-        self.assertIn("/api/satellites/${noradId}/elements", html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
 
@@ -59,7 +64,7 @@ class WebWiringTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/index"', rendered
+            'content="https://if-api.acceler.workers.dev/api/v1/index"', rendered
         )
         self.assertNotIn("__TIMELAPSE_INDEX_URL__", rendered)
         self.assertTrue(
@@ -68,6 +73,9 @@ class WebWiringTests(unittest.TestCase):
                 / "dist"
                 / "infra_timelapse_ports_corridors.json"
             ).is_file()
+        )
+        self.assertTrue(
+            (REPOSITORY_ROOT / "dist" / "dashboard-theme.js").is_file()
         )
 
     def test_standalone_worker_uses_runtime_api_base(self):
@@ -85,6 +93,12 @@ class WebWiringTests(unittest.TestCase):
             REPOSITORY_ROOT / "web" / "worker" / "wrangler.jsonc"
         ).read_text(encoding="utf-8")
         self.assertNotIn("infratimelapse.pages.dev", wrangler)
+        deploy_script = (
+            REPOSITORY_ROOT / "deploy" / "deploy_cloudflare.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('deployment_branch="${GITHUB_REF_NAME:-', deploy_script)
+        self.assertIn("wrangler versions upload", deploy_script)
+        self.assertIn("expected ${PRODUCTION_BRANCH}", deploy_script)
 
 
 if __name__ == "__main__":

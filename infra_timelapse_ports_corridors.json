@@ -14,6 +14,7 @@
     "coordinate_order": "longitude, latitude"
   },
   "inventory_counts": {
+    "capture_targets": 2,
     "ports_and_logistics_nodes": 54,
     "corridors": 19,
     "chokepoints_and_route_overlays": 14,
@@ -21,6 +22,7 @@
   },
   "notes": [
     "Every coordinates array is [longitude, latitude]; gps objects repeat the same values as named fields.",
+    "Generic capture targets represent monitoring areas that are not ports or corridor waypoints.",
     "Port and terminal coordinates identify the facility, port area, or proposed site, as indicated by coordinate_precision.",
     "Corridor paths are schematic monitoring waypoints, not surveyed rail, road, shipping, or pipeline alignments.",
     "Combined issue entries are split into individual assets so each monitored location has one GPS point.",
@@ -65,6 +67,46 @@
       "name": "Official Belt and Road framework",
       "url": "https://eng.yidaiyilu.gov.cn/p/0KO9IB90.html",
       "use": "Corridor naming and scope context"
+    }
+  ],
+  "capture_targets": [
+    {
+      "id": "lahaina_recovery_area",
+      "name": "Lahaina Recovery Area",
+      "aliases": ["Lahaina reconstruction", "Lahaina wildfire recovery"],
+      "country_or_area": "United States — Hawaiʻi",
+      "iso_country_code": "US",
+      "target_type": "recovery_area",
+      "asset_type": "community_reconstruction",
+      "monitoring_tier": "priority",
+      "project_status": "rebuilding",
+      "theme": "reconstruction",
+      "coordinates": [-156.6825, 20.8783],
+      "gps": {"latitude": 20.8783, "longitude": -156.6825},
+      "coordinate_precision": "representative_area_center",
+      "coordinate_source_ids": ["openstreetmap"],
+      "zoom": 14,
+      "radius_km": 3.2,
+      "notes": "Town-scale monitoring extent centered on Lahaina. Intended for regional reconstruction change, not parcel- or survey-grade analysis."
+    },
+    {
+      "id": "pacific_palisades_recovery_area",
+      "name": "Pacific Palisades Recovery Area",
+      "aliases": ["Pacific Palisades reconstruction", "Palisades wildfire recovery"],
+      "country_or_area": "United States — California",
+      "iso_country_code": "US",
+      "target_type": "recovery_area",
+      "asset_type": "community_reconstruction",
+      "monitoring_tier": "priority",
+      "project_status": "rebuilding",
+      "theme": "reconstruction",
+      "coordinates": [-118.5267, 34.0479],
+      "gps": {"latitude": 34.0479, "longitude": -118.5267},
+      "coordinate_precision": "representative_area_center",
+      "coordinate_source_ids": ["openstreetmap"],
+      "zoom": 14,
+      "radius_km": 2.5,
+      "notes": "Community-scale monitoring extent centered on the Pacific Palisades village area. Intended for aggregate reconstruction change only; excludes parcel-, resident-, and survey-grade analysis."
     }
   ],
   "ports_and_logistics_nodes": [

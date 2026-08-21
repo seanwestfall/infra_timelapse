@@ -8,6 +8,7 @@ const ENV = {
   ORIGIN_AUTH_TOKEN: "origin-secret",
   DATABASE_URL: "postgresql://inventory.example/test",
   ALLOWED_ORIGINS: "https://infra.example,https://preview.example",
+  PAGES_PREVIEW_SUFFIX: ".infratimelapse.pages.dev",
 };
 
 function context() {
@@ -77,6 +78,40 @@ test("forwards only allowlisted paths and safe headers", async () => {
   }
 });
 
+test("serves v1 routes while retaining the legacy API contract", async () => {
+  const originalFetch = globalThis.fetch;
+  const observed = [];
+  globalThis.fetch = async (url) => {
+    observed.push(String(url));
+    return new Response('{"manifests":[]}');
+  };
+  try {
+    for (const path of ["/api/index", "/api/v1/index"]) {
+      const response = await handleRequest(
+        new Request(`https://infra.example${path}`),
+        ENV,
+        context(),
+      );
+      assert.equal(response.status, 200, path);
+    }
+    assert.deepEqual(observed, [
+      "https://capture-api.example.run.app/api/index",
+      "https://capture-api.example.run.app/api/index",
+    ]);
+
+    const inventory = await handleRequest(
+      new Request("https://infra.example/api/v1/nodes"),
+      ENV,
+      context(),
+      null,
+      { createDatabaseClient: () => async () => [] },
+    );
+    assert.equal(inventory.status, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("rejects traversal, non-PNG paths, and unsupported methods", async () => {
   const cases = [
     "/api/captures/captures/run/../secret.png",
@@ -136,7 +171,7 @@ test("always allows origins declared by the deployment manifest", async () => {
   }
 });
 
-test("manifest suffixes do not trust the suffix apex or lookalike domains", async () => {
+test("manifest suffixes reject insecure and lookalike domains", async () => {
   for (const origin of [
     "http://feature-abc.infratimelapse.pages.dev",
     "https://infratimelapse.pages.dev.evil.example",

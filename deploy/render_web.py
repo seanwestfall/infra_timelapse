@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 
 from cloudflare_manifest import load_manifest
 
-
 INDEX_URL_PLACEHOLDER = "__TIMELAPSE_INDEX_URL__"
 
 
@@ -25,7 +24,7 @@ def index_url(api_base: str) -> str:
         raise ValueError("TIMELAPSE_API_BASE must not contain a path, query, or fragment")
     if parsed.username or parsed.password:
         raise ValueError("TIMELAPSE_API_BASE must not contain credentials")
-    return f"{value}/api/index"
+    return f"{value}/api/v1/index"
 
 
 def main() -> None:

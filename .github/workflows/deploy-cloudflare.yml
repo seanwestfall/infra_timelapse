@@ -3,6 +3,8 @@ name: Deploy Cloudflare
 on:
   push:
     branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       pages:
@@ -16,11 +18,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-production
-  cancel-in-progress: false
+  group: cloudflare-${{ github.event.pull_request.number || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   deploy:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -50,22 +53,55 @@ jobs:
 
       - run: npm run validate:worker
 
+      - name: Verify production remains healthy
+        if: github.event_name == 'pull_request'
+        run: bash deploy/check_production.sh
+
       - name: Deploy Worker and conditionally deploy Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
-          CLOUDFLARE_PAGES_BRANCH: main
+          CLOUDFLARE_PAGES_BRANCH: ${{ github.head_ref || 'main' }}
           TIMELAPSE_API_BASE: ${{ vars.TIMELAPSE_API_BASE }}
-          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_BEFORE: ${{ github.event.before || github.event.pull_request.base.sha }}
           EVENT_SHA: ${{ github.sha }}
           INPUT_PAGES: ${{ inputs.pages }}
         run: |
+          set -o pipefail
           pages_mode="${INPUT_PAGES:-auto}"
+          worker_mode="production"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            pages_mode="always"
+            worker_mode="preview"
+            if [[ -z "${CLOUDFLARE_API_TOKEN}" || -z "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
+              pages_mode="never"
+              worker_mode="never"
+              echo "::warning::Pages preview skipped: configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in the production environment."
+            fi
+          fi
           bash deploy/deploy_cloudflare.sh \
             --pages "${pages_mode}" \
+            --worker "${worker_mode}" \
             --base-ref "${EVENT_BEFORE}" \
-            --head-ref "${EVENT_SHA}"
+            --head-ref "${EVENT_SHA}" | tee "${RUNNER_TEMP}/cloudflare-deploy.log"
 
-      - name: Verify production CORS and capture delivery
+      - name: Verify production after deployment
+        if: github.event_name != 'pull_request'
         run: bash deploy/check_production.sh
+
+      - name: Publish preview address
+        if: github.event_name == 'pull_request'
+        env:
+          DEPLOY_LOG: ${{ runner.temp }}/cloudflare-deploy.log
+        run: |
+          echo "### Cloudflare Pages preview" >> "${GITHUB_STEP_SUMMARY}"
+          if preview_url="$(grep -Eo 'https://[a-z0-9-]+\.infratimelapse\.pages\.dev' "${DEPLOY_LOG}" | head -1)" && [[ -n "${preview_url}" ]]; then
+            echo "${preview_url}" >> "${GITHUB_STEP_SUMMARY}"
+            if api_url="$(grep -Eo 'Worker preview: https://[^ ]+' "${DEPLOY_LOG}" | tail -1 | cut -d' ' -f3)" && [[ -n "${api_url}" ]]; then
+              echo "" >> "${GITHUB_STEP_SUMMARY}"
+              echo "API: ${api_url}/api/v1/index" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+          else
+            echo "Preview credentials are not configured; tests and build still completed." >> "${GITHUB_STEP_SUMMARY}"
+          fi

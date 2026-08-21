@@ -18,7 +18,8 @@ Usage: deploy/deploy_cloudflare.sh [options]
 
 Options:
   --pages auto|always|never   Deploy Pages when changed, always, or never.
-  --worker production|never   Promote the Worker or skip it.
+  --worker production|preview|never
+                              Promote the Worker, upload a preview, or skip it.
   --base-ref REF              Base Git revision for --pages auto.
   --head-ref REF              Head Git revision for --pages auto (default: HEAD).
   --help                      Show this help.
@@ -27,6 +28,7 @@ Environment:
   CLOUDFLARE_PAGES_PROJECT    Pages project name (default: manifest value).
   CLOUDFLARE_PAGES_BRANCH     Pages deployment branch (default: manifest value).
   TIMELAPSE_API_BASE          Optional HTTPS Worker origin for separate-host mode.
+  CLOUDFLARE_WORKER_ALIAS     Optional preview alias (defaults to Pages branch).
 EOF
 }
 
@@ -64,26 +66,48 @@ if [[ ! " ${PAGES_MODE} " =~ ^\ (auto|always|never)\ $ ]]; then
   echo "--pages must be auto, always, or never" >&2
   exit 64
 fi
-if [[ ! " ${WORKER_MODE} " =~ ^\ (production|never)\ $ ]]; then
-  echo "--worker must be production or never" >&2
+if [[ ! " ${WORKER_MODE} " =~ ^\ (production|preview|never)\ $ ]]; then
+  echo "--worker must be production, preview, or never" >&2
   exit 64
 fi
 
 cd "${REPOSITORY_ROOT}"
 "${PYTHON_COMMAND}" "${MANIFEST_TOOL}" validate
 
-if [[ "${WORKER_MODE}" == "production" ]]; then
-  deployment_branch="${GITHUB_REF_NAME:-$(git branch --show-current)}"
-  if [[ "${deployment_branch}" != "${PRODUCTION_BRANCH}" ]]; then
-    echo "Refusing to deploy the production Worker from ${deployment_branch:-detached HEAD}; expected ${PRODUCTION_BRANCH}" >&2
-    exit 65
-  fi
+if [[ "${WORKER_MODE}" != "never" ]]; then
   if grep -q "replace-with-cloud-run-service" web/worker/wrangler.jsonc; then
     echo "Set API_BASE_URL in web/worker/wrangler.jsonc before deploying" >&2
     exit 78
   fi
-  echo "Deploying standalone Worker"
-  npx --no-install wrangler deploy --config web/worker/wrangler.jsonc
+  if [[ "${WORKER_MODE}" == "production" ]]; then
+    deployment_branch="${GITHUB_REF_NAME:-$(git branch --show-current)}"
+    if [[ "${deployment_branch}" != "${PRODUCTION_BRANCH}" ]]; then
+      echo "Refusing to deploy the production Worker from ${deployment_branch:-detached HEAD}; expected ${PRODUCTION_BRANCH}" >&2
+      exit 65
+    fi
+    echo "Deploying standalone Worker to production"
+    npx --no-install wrangler deploy --config web/worker/wrangler.jsonc
+  else
+    worker_alias="${CLOUDFLARE_WORKER_ALIAS:-${PAGES_BRANCH}}"
+    worker_alias="$(printf '%s' "${worker_alias}" | tr '[:upper:]_' '[:lower:]-' | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//; s/^[^a-z]+/preview-/')"
+    worker_alias="${worker_alias:0:40}"
+    if [[ -z "${worker_alias}" ]]; then
+      worker_alias="preview"
+    fi
+    worker_log="$(mktemp)"
+    trap 'rm -f "${worker_log}"' EXIT
+    echo "Uploading standalone Worker preview (${worker_alias})"
+    npx --no-install wrangler versions upload \
+      --config web/worker/wrangler.jsonc \
+      --preview-alias "${worker_alias}" | tee "${worker_log}"
+    preview_api_base="$(grep -Eo 'https://[a-z0-9-]+-if-api\.[a-z0-9.-]+\.workers\.dev' "${worker_log}" | tail -1)"
+    if [[ -z "${preview_api_base}" ]]; then
+      echo "Wrangler did not return a Worker preview URL" >&2
+      exit 70
+    fi
+    export TIMELAPSE_API_BASE="${preview_api_base}"
+    echo "Worker preview: ${TIMELAPSE_API_BASE}"
+  fi
 else
   echo "Skipping Worker deployment"
 fi

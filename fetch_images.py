@@ -113,6 +113,30 @@ def validate_identifier(value: Any, context: str) -> str:
     return identifier
 
 
+def iter_capture_targets(inventory: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    """Yield optional generic monitoring areas without changing legacy records."""
+    for target in inventory.get("capture_targets", []):
+        target_id = validate_identifier(target.get("id"), "capture target id")
+        latitude, longitude = parse_coordinates(
+            target.get("coordinates"),
+            f"capture target {target_id!r} coordinates",
+        )
+        yield {
+            "id": target_id,
+            "target_type": str(target.get("target_type", "area")),
+            "name": str(target["name"]),
+            "latitude": latitude,
+            "longitude": longitude,
+            "zoom": int(target.get("zoom", CORRIDOR_ZOOM)),
+            "output_parts": ("targets", target_id),
+            "country_or_area": target.get("country_or_area"),
+            "asset_type": target.get("asset_type"),
+            "monitoring_tier": target.get("monitoring_tier"),
+            "project_status": target.get("project_status"),
+            "theme": target.get("theme"),
+        }
+
+
 def iter_ports(inventory: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """Yield one satellite-image target for each port or logistics node."""
     for port in inventory["ports_and_logistics_nodes"]:
@@ -211,10 +235,14 @@ def iter_corridor_waypoints(
 def iter_targets(
     inventory: dict[str, Any], scope: str = "all"
 ) -> Iterator[dict[str, Any]]:
-    """Cycle through ports, corridor waypoints, or both."""
-    if scope not in {"ports", "corridors", "all"}:
-        raise ValueError("scope must be 'ports', 'corridors', or 'all'")
+    """Cycle through generic areas, ports, corridor waypoints, or all."""
+    if scope not in {"targets", "ports", "corridors", "all"}:
+        raise ValueError(
+            "scope must be 'targets', 'ports', 'corridors', or 'all'"
+        )
 
+    if scope in {"targets", "all"}:
+        yield from iter_capture_targets(inventory)
     if scope in {"ports", "all"}:
         yield from iter_ports(inventory)
     if scope in {"corridors", "all"}:
@@ -376,7 +404,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--scope",
-        choices=("ports", "corridors", "all"),
+        choices=("targets", "ports", "corridors", "all"),
         default="all",
         help="Targets to cycle through (default: all)",
     )
