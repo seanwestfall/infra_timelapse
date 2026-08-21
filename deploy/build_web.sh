@@ -17,5 +17,7 @@ mkdir -p "${OUTPUT_DIRECTORY}"
   "${OUTPUT_DIRECTORY}/index.html"
 install -m 0644 "${REPOSITORY_ROOT}/infra_timelapse_ports_corridors.json" \
   "${OUTPUT_DIRECTORY}/infra_timelapse_ports_corridors.json"
+install -m 0644 "${REPOSITORY_ROOT}/web/public/dashboard-theme.js" \
+  "${OUTPUT_DIRECTORY}/dashboard-theme.js"
 
 echo "Built Cloudflare Pages assets in ${OUTPUT_DIRECTORY}"

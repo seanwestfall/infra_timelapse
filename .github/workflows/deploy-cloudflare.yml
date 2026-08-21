@@ -3,6 +3,8 @@ name: Deploy Cloudflare
 on:
   push:
     branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       pages:
@@ -16,13 +18,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-production
-  cancel-in-progress: false
+  group: cloudflare-${{ github.event.pull_request.number || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   deploy:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.event_name == 'push' && 'production' || 'preview' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,14 +56,31 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
-          CLOUDFLARE_PAGES_BRANCH: main
+          CLOUDFLARE_PAGES_BRANCH: ${{ github.head_ref || 'main' }}
           TIMELAPSE_API_BASE: ${{ vars.TIMELAPSE_API_BASE }}
-          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_BEFORE: ${{ github.event.before || github.event.pull_request.base.sha }}
           EVENT_SHA: ${{ github.sha }}
           INPUT_PAGES: ${{ inputs.pages }}
         run: |
           pages_mode="${INPUT_PAGES:-auto}"
+          worker_mode="always"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            pages_mode="always"
+            worker_mode="never"
+          fi
           bash deploy/deploy_cloudflare.sh \
             --pages "${pages_mode}" \
+            --worker "${worker_mode}" \
             --base-ref "${EVENT_BEFORE}" \
             --head-ref "${EVENT_SHA}"
+
+      - name: Publish preview address
+        if: github.event_name == 'pull_request'
+        env:
+          PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          PREVIEW_BRANCH: ${{ github.head_ref }}
+        run: |
+          branch_alias="$(printf '%s' "${PREVIEW_BRANCH}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g')"
+          project="${PAGES_PROJECT:-infra-timelapse}"
+          echo "### Cloudflare Pages preview" >> "${GITHUB_STEP_SUMMARY}"
+          echo "https://${branch_alias}.${project}.pages.dev" >> "${GITHUB_STEP_SUMMARY}"

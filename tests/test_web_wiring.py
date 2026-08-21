@@ -23,6 +23,11 @@ class WebWiringTests(unittest.TestCase):
         )
         self.assertIn('id="satellite-globe"', html)
         self.assertIn('id="satellite-select"', html)
+        self.assertIn('id="theme-switcher"', html)
+        self.assertIn('data-theme="reconstruction"', html)
+        self.assertIn('data-theme="bri"', html)
+        self.assertIn('data-theme="ciit"', html)
+        self.assertIn("filterTargetsByTheme", html)
         map_start = html.index('<div id="map"')
         map_end = html.index("</div>", html.index('id="satellite-status"'))
         image_stage_start = html.index('<div id="image-stage"')
@@ -60,6 +65,9 @@ class WebWiringTests(unittest.TestCase):
                 / "dist"
                 / "infra_timelapse_ports_corridors.json"
             ).is_file()
+        )
+        self.assertTrue(
+            (REPOSITORY_ROOT / "dist" / "dashboard-theme.js").is_file()
         )
 
     def test_standalone_worker_uses_runtime_api_base(self):

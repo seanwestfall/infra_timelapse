@@ -8,7 +8,7 @@
     "deploy:worker": "wrangler deploy --config web/worker/wrangler.jsonc",
     "secret:database": "wrangler secret put DATABASE_URL --config web/worker/wrangler.jsonc",
     "deploy:pages": "bash deploy/deploy_cloudflare.sh --worker never --pages always",
-    "test": "node --test web/worker/test/*.test.mjs",
+    "test": "node --test web/worker/test/*.test.mjs tests/*.mjs",
     "test:worker": "node --test web/worker/test/*.test.mjs",
     "validate:worker": "wrangler deploy --config web/worker/wrangler.jsonc --dry-run"
   },

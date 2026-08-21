@@ -22,6 +22,7 @@
   .btn:disabled { background:#4b5563; color:#d1d5db; cursor:not-allowed; }
   .playback-speed button { margin:0 .15rem; }
   .playback-speed button[aria-pressed="true"] { background:#14b8a6; box-shadow:0 0 0 2px #5eead4 inset; }
+  .theme-switcher button[aria-pressed="true"] { background:#0d9488; color:#fff; box-shadow:0 0 0 2px #5eead4 inset; }
   .image-stage { min-height:240px; background:#111827; border-radius:.5rem; overflow:hidden; }
   .image-stage img { min-height:240px; max-height:58vh; }
   .satellite-card { position:absolute; z-index:3; top:.5rem; left:.5rem; width:150px; overflow:hidden; border:1px solid rgb(94 234 212 / .55); border-radius:.5rem; background:rgb(15 23 42 / .9); box-shadow:0 8px 24px rgb(0 0 0 / .35); backdrop-filter:blur(6px); }
@@ -66,6 +67,15 @@
       <button id="close-sidebar" class="md:hidden btn">✕</button>
     </div>
     <div class="sidebar-content">
+      <fieldset class="mb-4">
+        <legend class="block text-sm font-medium mb-1">Monitoring theme</legend>
+        <div id="theme-switcher" class="theme-switcher grid grid-cols-3 gap-1" aria-label="Monitoring theme">
+          <button type="button" class="rounded bg-gray-700 px-2 py-2 text-sm" data-theme="reconstruction" aria-pressed="true">Reconstruction</button>
+          <button type="button" class="rounded bg-gray-700 px-2 py-2 text-sm" data-theme="bri" aria-pressed="false">BRI</button>
+          <button type="button" class="rounded bg-gray-700 px-2 py-2 text-sm" data-theme="ciit" aria-pressed="false">CIIT</button>
+        </div>
+      </fieldset>
+
       <label for="target-select" class="block text-sm font-medium mb-1">Location</label>
       <select id="target-select" class="w-full mb-4 px-2 py-2 rounded bg-gray-700 text-white">
         <option value="">Loading locations…</option>
@@ -139,6 +149,7 @@
 
 <script type="module">
 import * as maplibregl from "https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs";
+import { filterTargetsByTheme } from "./dashboard-theme.js";
 
 const $ = (id) => document.getElementById(id);
 const capturesByTarget = new Map();
@@ -149,6 +160,7 @@ let currentTargetId = "";
 let currentFrame = 0;
 let playbackTimer;
 let playbackSpeed = 1;
+let selectedTheme = "reconstruction";
 const TRACKED_SATELLITES = new Map([
   ["39084", "Landsat 8"],
   ["49260", "Landsat 9"],
@@ -445,6 +457,18 @@ function collectCaptures(value, inherited = {}, output = []) {
 
 function inventoryTargets(inventory) {
   const targets = [];
+  (inventory.capture_targets || []).forEach((target) => {
+    targets.push({
+      id: target.id,
+      name: target.name,
+      type: target.target_type || "area",
+      country: target.country_or_area || "",
+      aliases: target.aliases || [],
+      longitude: target.coordinates?.[0],
+      latitude: target.coordinates?.[1],
+      theme: target.theme || "reconstruction",
+    });
+  });
   (inventory.ports_and_logistics_nodes || []).forEach((port) => {
     targets.push({
       id: port.id,
@@ -454,6 +478,7 @@ function inventoryTargets(inventory) {
       aliases: port.aliases || [],
       longitude: port.coordinates?.[0],
       latitude: port.coordinates?.[1],
+      theme: port.theme || "ciit",
     });
   });
   (inventory.corridors || []).forEach((corridor) => {
@@ -472,6 +497,7 @@ function inventoryTargets(inventory) {
           latitude: waypoint.coordinates?.[1],
           legacyDirectory: `${waypointNumber}-${legacySlug(waypoint.name)}`,
           stableDirectory: waypointId ? `${waypointNumber}-${waypointId}` : "",
+          theme: waypoint.theme || corridor.theme || "bri",
         });
       });
     });
@@ -672,7 +698,35 @@ function enterCompareMode() {
 function populateTargetSelect() {
   const select = $("target-select");
   select.replaceChildren(new Option("Choose a location", ""));
-  visibleTargets.forEach((target) => select.add(new Option(`${target.name} (${getCapturesForTarget(target.id).length})`, target.id)));
+  filterTargetsByTheme(visibleTargets, selectedTheme).forEach((target) =>
+    select.add(new Option(`${target.name} (${getCapturesForTarget(target.id).length})`, target.id))
+  );
+}
+
+function applyTargetFilters() {
+  const themedTargets = filterTargetsByTheme(visibleTargets, selectedTheme);
+  const term = $("search").value.trim().toLocaleLowerCase();
+  const filtered = term
+    ? themedTargets.filter((target) => [target.name, ...(target.aliases || [])].join(" ").toLocaleLowerCase().includes(term))
+    : themedTargets;
+  updateMap(filtered);
+  populateTargetSelect();
+  if (!themedTargets.some((target) => target.id === currentTargetId)) {
+    const next = themedTargets.find((target) => getCapturesForTarget(target.id).length) || themedTargets[0];
+    if (next) openTarget(next.id);
+    else currentTargetId = "";
+  }
+  return themedTargets;
+}
+
+function updateTheme(theme) {
+  selectedTheme = theme;
+  document.querySelectorAll("[data-theme]").forEach((button) =>
+    button.setAttribute("aria-pressed", String(button.dataset.theme === theme))
+  );
+  const themedTargets = applyTargetFilters();
+  const label = theme === "reconstruction" ? "reconstruction" : theme.toUpperCase();
+  $("status").textContent = `${themedTargets.length} ${label} locations`;
 }
 
 async function initialize() {
@@ -680,8 +734,7 @@ async function initialize() {
   if (inventoryResult) {
     inventoryTargets(inventoryResult).forEach((target) => targetsById.set(target.id, target));
     visibleTargets = [...targetsById.values()].sort((a, b) => a.name.localeCompare(b.name));
-    populateTargetSelect();
-    updateMap(visibleTargets);
+    applyTargetFilters();
     $("status").textContent = `${visibleTargets.length} locations · captures loading…`;
   }
 
@@ -697,12 +750,12 @@ async function initialize() {
     capturesByTarget.forEach((items) => items.sort((a, b) => a.capturedAt.localeCompare(b.capturedAt) || a.runId.localeCompare(b.runId)));
     const targetIds = new Set([...targetsById.keys(), ...capturesByTarget.keys()]);
     visibleTargets = [...targetIds].map(getTargetById).sort((a, b) => a.name.localeCompare(b.name));
-    populateTargetSelect();
-    updateMap(visibleTargets);
+    applyTargetFilters();
     $("status").textContent = `${captures.length} frames · ${visibleTargets.length} locations`;
     const assetsBase = configuredAssetsBase();
     $("status").title = `Loaded from ${indexResult.url}${assetsBase ? `; images from ${assetsBase}` : ""}`;
-    const firstCapturedTarget = visibleTargets.find((target) => getCapturesForTarget(target.id).length);
+    const firstCapturedTarget = filterTargetsByTheme(visibleTargets, selectedTheme)
+      .find((target) => getCapturesForTarget(target.id).length);
     if (firstCapturedTarget) openTarget(firstCapturedTarget.id);
     else throw new Error("The image index contained no usable captures");
   } catch (error) {
@@ -722,6 +775,7 @@ $("next-frame").addEventListener("click", nextFrame);
 $("frame-slider").addEventListener("input", (event) => setFrame(Number(event.target.value)));
 $("play-pause").addEventListener("click", () => playbackTimer ? stopPlayback() : startPlayback());
 $("target-select").addEventListener("change", (event) => event.target.value && openTarget(event.target.value));
+document.querySelectorAll("[data-theme]").forEach((button) => button.addEventListener("click", () => updateTheme(button.dataset.theme)));
 $("satellite-select").addEventListener("change", (event) => selectSatellite(event.target.value));
 document.querySelectorAll(".playback-speed button").forEach((button) => button.addEventListener("click", () => {
   playbackSpeed = Number(button.dataset.speed);
@@ -742,9 +796,7 @@ $("fullscreen-btn").addEventListener("click", () => $("image-stage").requestFull
 $("main-image").addEventListener("click", () => $("image-stage").requestFullscreen?.());
 $("close-sidebar").addEventListener("click", () => $("sidebar").classList.add("hidden"));
 $("search").addEventListener("input", debounce((event) => {
-  const term = event.target.value.trim().toLocaleLowerCase();
-  const filtered = visibleTargets.filter((target) => [target.name, ...(target.aliases || [])].join(" ").toLocaleLowerCase().includes(term));
-  updateMap(filtered);
+  applyTargetFilters();
 }, 250));
 map.on("load", () => { addMapLayers(); initialize(); });
 </script>
