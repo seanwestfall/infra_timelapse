@@ -12,6 +12,32 @@ Infra Timelapse has three deliberately separate pieces:
 
 The browser never receives a `gs://` URI or an anonymous Cloud Storage URL.
 
+## Feature preview process
+
+Frontend features are developed on dedicated branches and reviewed through a
+pull request before production deployment. Pull requests originating from this
+repository run the complete test/build suite and deploy only the static Pages
+frontend; they never deploy the production API Worker.
+
+Cloudflare Pages publishes an immutable deployment URL and a moving branch
+alias. For example, `codex/reconstruction-theme-preview` is available at
+`codex-reconstruction-theme-preview.<pages-project>.pages.dev`. The workflow
+adds that branch alias to its GitHub Actions job summary. Production remains
+restricted to pushes on `main`.
+
+Recommended feature flow:
+
+1. Branch from the current integration branch.
+2. Commit and push the feature branch.
+3. Open a draft pull request and wait for tests plus the Pages preview.
+4. Review the preview URL from the Actions summary before marking the PR ready.
+5. Merge through the PR; never deploy a feature branch as production.
+
+The preview job uses the existing GitHub `production` environment credentials,
+but the workflow forces `--worker never` and a non-main Pages branch. A future
+hardening step can move previews to a separate environment with a Pages-only
+Cloudflare token without changing the feature-branch contract.
+
 ## Google Cloud prerequisites
 
 - Google Cloud CLI installed and authenticated
