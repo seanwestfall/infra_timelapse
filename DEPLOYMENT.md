@@ -33,9 +33,10 @@ Recommended feature flow:
 4. Review the preview URL from the Actions summary before marking the PR ready.
 5. Merge through the PR; never deploy a feature branch as production.
 
-The preview job expects a GitHub environment named `preview` with access to the
-same `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets used for Pages,
-plus the `CLOUDFLARE_PAGES_PROJECT` and `TIMELAPSE_API_BASE` variables.
+The preview job uses the existing GitHub `production` environment credentials,
+but the workflow forces `--worker never` and a non-main Pages branch. A future
+hardening step can move previews to a separate environment with a Pages-only
+Cloudflare token without changing the feature-branch contract.
 
 ## Google Cloud prerequisites
 
