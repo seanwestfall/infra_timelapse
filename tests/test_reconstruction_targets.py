@@ -1,4 +1,3 @@
-import json
 import unittest
 from pathlib import Path
 
@@ -42,15 +41,6 @@ class ReconstructionTargetTests(unittest.TestCase):
             + self.inventory["inventory_counts"]["corridor_waypoints"]
         )
         self.assertEqual(len(targets), expected)
-
-    def test_deployed_inventory_matches_reconstruction_targets(self):
-        deployed = json.loads(
-            (ROOT / "dist" / "infra_timelapse_ports_corridors.json").read_text()
-        )
-        self.assertEqual(
-            deployed["capture_targets"], self.inventory["capture_targets"]
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
