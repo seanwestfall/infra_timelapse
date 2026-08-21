@@ -108,6 +108,55 @@ test("rejects unapproved cross-origin requests", async () => {
   assert.equal(response.status, 403);
 });
 
+test("always allows origins declared by the deployment manifest", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{"manifests":[]}');
+  try {
+    for (const origin of [
+      "https://infratimelapse.pages.dev",
+      "https://feature-abc.infratimelapse.pages.dev",
+    ]) {
+      const response = await handleRequest(
+        new Request("https://api.example/api/index", {
+          headers: { Origin: origin },
+        }),
+        {
+          ...ENV,
+          ALLOWED_ORIGINS: "",
+          ALLOWED_ORIGIN_SUFFIXES: "",
+          PAGES_PREVIEW_SUFFIX: "",
+        },
+        context(),
+      );
+      assert.equal(response.status, 200, origin);
+      assert.equal(response.headers.get("access-control-allow-origin"), origin);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("manifest suffixes do not trust the suffix apex or lookalike domains", async () => {
+  for (const origin of [
+    "http://feature-abc.infratimelapse.pages.dev",
+    "https://infratimelapse.pages.dev.evil.example",
+    "https://evilpages.dev",
+  ]) {
+    const response = await handleRequest(
+      new Request("https://api.example/api/index", {
+        headers: { Origin: origin },
+      }),
+      {
+        ...ENV,
+        ALLOWED_ORIGINS: "",
+        ALLOWED_ORIGIN_SUFFIXES: "",
+        PAGES_PREVIEW_SUFFIX: "",
+      },
+    );
+    assert.equal(response.status, 403, origin);
+  }
+});
+
 test("caches successful images but not upstream errors", async () => {
   const originalFetch = globalThis.fetch;
   const cache = memoryCache();
@@ -294,6 +343,107 @@ test("fails closed without a database secret and hides database errors", async (
     assert.deepEqual(await failedQuery.json(), {
       error: "Inventory database unavailable",
     });
+  } finally {
+    console.error = originalError;
+  }
+});
+
+test("serves allowlisted CelesTrak elements and caches them independently of CORS", async () => {
+  const cache = memoryCache();
+  const ctx = context();
+  let calls = 0;
+  let observedUrl;
+  const fetchSatelliteElements = async (url) => {
+    calls += 1;
+    observedUrl = String(url);
+    return Response.json([
+      {
+        OBJECT_NAME: "LANDSAT 8",
+        NORAD_CAT_ID: 39084,
+        EPOCH: "2026-08-14T00:00:00.000000",
+        MEAN_MOTION: 14.571,
+      },
+    ]);
+  };
+
+  const first = await handleRequest(
+    new Request("https://api.example/api/satellites/39084/elements", {
+      headers: { Origin: "https://infra.example" },
+    }),
+    ENV,
+    ctx,
+    cache,
+    { fetchSatelliteElements },
+  );
+  await Promise.all(ctx.writes);
+  const second = await handleRequest(
+    new Request("https://api.example/api/satellites/39084/elements", {
+      headers: { Origin: "https://preview.example" },
+    }),
+    ENV,
+    context(),
+    cache,
+    { fetchSatelliteElements },
+  );
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(calls, 1);
+  assert.equal(
+    observedUrl,
+    "https://celestrak.org/NORAD/elements/gp.php?CATNR=39084&FORMAT=JSON",
+  );
+  assert.equal(
+    first.headers.get("cache-control"),
+    "public, max-age=300, s-maxage=7200, stale-if-error=86400",
+  );
+  assert.equal(
+    first.headers.get("access-control-allow-origin"),
+    "https://infra.example",
+  );
+  assert.equal(
+    second.headers.get("access-control-allow-origin"),
+    "https://preview.example",
+  );
+  const payload = await first.json();
+  assert.equal(payload.source, "CelesTrak");
+  assert.equal(payload.norad_id, 39084);
+  assert.equal(payload.name, "Landsat 8");
+  assert.equal(payload.elements.OBJECT_NAME, "LANDSAT 8");
+});
+
+test("rejects unlisted satellites and hides CelesTrak failures", async () => {
+  let calls = 0;
+  const fetchSatelliteElements = async () => {
+    calls += 1;
+    return new Response("temporarily unavailable", { status: 503 });
+  };
+
+  const unknown = await handleRequest(
+    new Request("https://api.example/api/satellites/25544/elements"),
+    ENV,
+    context(),
+    null,
+    { fetchSatelliteElements },
+  );
+  assert.equal(unknown.status, 404);
+  assert.equal(calls, 0);
+
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const failed = await handleRequest(
+      new Request("https://api.example/api/satellites/49260/elements"),
+      ENV,
+      context(),
+      null,
+      { fetchSatelliteElements },
+    );
+    assert.equal(failed.status, 502);
+    assert.deepEqual(await failed.json(), {
+      error: "Satellite elements unavailable",
+    });
+    assert.equal(calls, 1);
   } finally {
     console.error = originalError;
   }

@@ -6,9 +6,9 @@
   "workers_dev": true,
   "preview_urls": true,
   "vars": {
-    "API_BASE_URL": "https://infra-timelapse-index-aicxsrrc2a-uw.a.run.app",
-    "ALLOWED_ORIGINS": ""
+    "API_BASE_URL": "https://infra-timelapse-index-aicxsrrc2a-uw.a.run.app"
   },
   // Runtime secrets are configured with `wrangler secret put`; they are never
   // stored in this file. Required secrets: ORIGIN_AUTH_TOKEN and DATABASE_URL.
+  // Browser origins are bundled from deploy/cloudflare-manifest.json.
 }

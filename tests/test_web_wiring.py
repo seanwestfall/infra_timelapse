@@ -11,9 +11,7 @@ class WebWiringTests(unittest.TestCase):
         html = (REPOSITORY_ROOT / "web" / "public" / "index.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/index"', html
-        )
+        self.assertIn('content="__TIMELAPSE_INDEX_URL__"', html)
         self.assertIn(
             "collectCaptures(indexResult.data, { index_url: indexResult.url })",
             html,
@@ -21,6 +19,31 @@ class WebWiringTests(unittest.TestCase):
         self.assertIn(
             'fetchJson("./infra_timelapse_ports_corridors.json")', html
         )
+        self.assertIn('id="satellite-globe"', html)
+        self.assertIn('id="satellite-select"', html)
+        map_start = html.index('<div id="map"')
+        map_end = html.index("</div>", html.index('id="satellite-status"'))
+        image_stage_start = html.index('<div id="image-stage"')
+        self.assertLess(map_start, html.index('id="satellite-card"'))
+        self.assertLess(html.index('id="satellite-card"'), map_end)
+        self.assertLess(map_end, image_stage_start)
+        self.assertIn(
+            'import * as maplibregl from "https://unpkg.com/maplibre-gl@6.4.1/dist/maplibre-gl.mjs"',
+            html,
+        )
+        self.assertNotIn("dist/maplibre-gl.js", html)
+        self.assertIn("const SATELLITE_GLOBE_STYLE", html)
+        self.assertIn('projection: { type: "globe" }', html)
+        self.assertIn('"atmosphere-blend"', html)
+        self.assertIn("style: SATELLITE_GLOBE_STYLE", html)
+        self.assertIn("addMapLayers();\n  ensureSatelliteGlobe();", html)
+        self.assertIn('addSource("satellite-orbit-trail"', html)
+        self.assertIn('id: "satellite-orbit-trail"', html)
+        self.assertIn("function updateSatelliteOrbitTrail", html)
+        self.assertIn("const trailMinutes = 105", html)
+        self.assertIn('"line-opacity": ["get", "opacity"]', html)
+        self.assertIn("/api/satellites/${noradId}/elements", html)
+        self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
 
     def test_pages_build_contains_real_entry_point_and_inventory(self):
@@ -53,7 +76,15 @@ class WebWiringTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("env.API_BASE_URL", worker)
         self.assertIn("env.ORIGIN_AUTH_TOKEN", worker)
+        self.assertIn("cloudflareManifest.production.pages_origin", worker)
+        self.assertIn("MANIFEST_ALLOWED_SUFFIXES", worker)
+        self.assertIn('const CELESTRAK_BASE = "https://celestrak.org/', worker)
+        self.assertIn("SATELLITE_PREFIX", worker)
         self.assertNotIn("storage.googleapis.com", worker)
+        wrangler = (
+            REPOSITORY_ROOT / "web" / "worker" / "wrangler.jsonc"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("infratimelapse.pages.dev", wrangler)
 
 
 if __name__ == "__main__":
