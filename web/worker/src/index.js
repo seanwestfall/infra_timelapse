@@ -4,6 +4,7 @@ import cloudflareManifest from "../../../deploy/cloudflare-manifest.json" with {
 const INDEX_PATH = "/api/index";
 const CAPTURE_PREFIX = "/api/captures/";
 const SATELLITE_PREFIX = "/api/satellites/";
+const API_VERSION_PREFIX = "/api/v1";
 const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php";
 const SATELLITES = new Map([
   ["39084", "Landsat 8"],
@@ -84,10 +85,11 @@ function capturePath(pathname) {
 }
 
 function routeFor(url) {
-  if (url.pathname === INDEX_PATH) {
+  const pathname = canonicalApiPath(url.pathname);
+  if (pathname === INDEX_PATH) {
     return { kind: "index", upstreamPath: INDEX_PATH };
   }
-  const objectName = capturePath(url.pathname);
+  const objectName = capturePath(pathname);
   if (objectName) {
     const encoded = objectName.split("/").map(encodeURIComponent).join("/");
     return {
@@ -98,7 +100,16 @@ function routeFor(url) {
   return null;
 }
 
+function canonicalApiPath(pathname) {
+  if (pathname === API_VERSION_PREFIX) return "/api";
+  if (pathname.startsWith(`${API_VERSION_PREFIX}/`)) {
+    return `/api${pathname.slice(API_VERSION_PREFIX.length)}`;
+  }
+  return pathname;
+}
+
 function satelliteId(pathname) {
+  pathname = canonicalApiPath(pathname);
   if (!pathname.startsWith(SATELLITE_PREFIX)) return null;
   const match = pathname.match(/^\/api\/satellites\/(\d{5})\/elements$/);
   if (!match || !SATELLITES.has(match[1])) return null;
@@ -337,7 +348,7 @@ export async function handleRequest(
     });
   }
 
-  const databaseKind = DATABASE_PATHS.get(incomingUrl.pathname);
+  const databaseKind = DATABASE_PATHS.get(canonicalApiPath(incomingUrl.pathname));
   const selectedSatelliteId = satelliteId(incomingUrl.pathname);
   const route = routeFor(incomingUrl);
   if (!route && !databaseKind && !selectedSatelliteId) {

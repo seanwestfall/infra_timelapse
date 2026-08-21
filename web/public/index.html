@@ -210,8 +210,9 @@ function loadOrbitLibrary() {
 function satelliteElementsUrl(noradId) {
   const queryApi = new URLSearchParams(location.search).get("api");
   const configuredIndex = document.querySelector('meta[name="timelapse-index-url"]')?.content;
-  const apiOrigin = new URL(queryApi || configuredIndex || document.baseURI, document.baseURI).origin;
-  return new URL(`/api/satellites/${noradId}/elements`, apiOrigin).href;
+  const apiUrl = new URL(queryApi || configuredIndex || document.baseURI, document.baseURI);
+  const versionPrefix = apiUrl.pathname.startsWith("/api/v1/") ? "/api/v1" : "/api";
+  return new URL(`${versionPrefix}/satellites/${noradId}/elements`, apiUrl.origin).href;
 }
 
 function ensureSatelliteGlobe() {
