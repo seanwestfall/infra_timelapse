@@ -68,12 +68,13 @@ jobs:
         run: |
           set -o pipefail
           pages_mode="${INPUT_PAGES:-auto}"
-          worker_mode="always"
+          worker_mode="production"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             pages_mode="always"
-            worker_mode="never"
+            worker_mode="preview"
             if [[ -z "${CLOUDFLARE_API_TOKEN}" || -z "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
               pages_mode="never"
+              worker_mode="never"
               echo "::warning::Pages preview skipped: configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in the production environment."
             fi
           fi
@@ -91,6 +92,10 @@ jobs:
           echo "### Cloudflare Pages preview" >> "${GITHUB_STEP_SUMMARY}"
           if preview_url="$(grep -Eo 'https://[a-z0-9-]+\.infratimelapse\.pages\.dev' "${DEPLOY_LOG}" | head -1)" && [[ -n "${preview_url}" ]]; then
             echo "${preview_url}" >> "${GITHUB_STEP_SUMMARY}"
+            if api_url="$(grep -Eo 'Worker preview: https://[^ ]+' "${DEPLOY_LOG}" | tail -1 | cut -d' ' -f3)" && [[ -n "${api_url}" ]]; then
+              echo "" >> "${GITHUB_STEP_SUMMARY}"
+              echo "API: ${api_url}/api/v1/index" >> "${GITHUB_STEP_SUMMARY}"
+            fi
           else
             echo "Preview credentials are not configured; tests and build still completed." >> "${GITHUB_STEP_SUMMARY}"
           fi

@@ -12,7 +12,7 @@ class WebWiringTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/index"', html
+            'content="https://if-api.acceler.workers.dev/api/v1/index"', html
         )
         self.assertIn(
             "collectCaptures(indexResult.data, { index_url: indexResult.url })",
@@ -39,7 +39,7 @@ class WebWiringTests(unittest.TestCase):
             html,
         )
         self.assertNotIn("dist/maplibre-gl.js", html)
-        self.assertIn("/api/satellites/${noradId}/elements", html)
+        self.assertIn('versionPrefix = apiUrl.pathname.startsWith("/api/v1/")', html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
 
@@ -56,7 +56,7 @@ class WebWiringTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/index"', rendered
+            'content="https://if-api.acceler.workers.dev/api/v1/index"', rendered
         )
         self.assertNotIn("__TIMELAPSE_INDEX_URL__", rendered)
         self.assertTrue(

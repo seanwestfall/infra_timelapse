@@ -78,6 +78,40 @@ test("forwards only allowlisted paths and safe headers", async () => {
   }
 });
 
+test("serves v1 routes while retaining the legacy API contract", async () => {
+  const originalFetch = globalThis.fetch;
+  const observed = [];
+  globalThis.fetch = async (url) => {
+    observed.push(String(url));
+    return new Response('{"manifests":[]}');
+  };
+  try {
+    for (const path of ["/api/index", "/api/v1/index"]) {
+      const response = await handleRequest(
+        new Request(`https://infra.example${path}`),
+        ENV,
+        context(),
+      );
+      assert.equal(response.status, 200, path);
+    }
+    assert.deepEqual(observed, [
+      "https://capture-api.example.run.app/api/index",
+      "https://capture-api.example.run.app/api/index",
+    ]);
+
+    const inventory = await handleRequest(
+      new Request("https://infra.example/api/v1/nodes"),
+      ENV,
+      context(),
+      null,
+      { createDatabaseClient: () => async () => [] },
+    );
+    assert.equal(inventory.status, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("rejects traversal, non-PNG paths, and unsupported methods", async () => {
   const cases = [
     "/api/captures/captures/run/../secret.png",

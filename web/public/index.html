@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Infra Timelapse Explorer – MVP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="timelapse-index-url" content="https://if-api.acceler.workers.dev/api/index">
+<meta name="timelapse-index-url" content="https://if-api.acceler.workers.dev/api/v1/index">
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- MapLibre GL JS -->
@@ -195,8 +195,9 @@ function loadOrbitLibrary() {
 function satelliteElementsUrl(noradId) {
   const queryApi = new URLSearchParams(location.search).get("api");
   const configuredIndex = document.querySelector('meta[name="timelapse-index-url"]')?.content;
-  const apiOrigin = new URL(queryApi || configuredIndex || document.baseURI, document.baseURI).origin;
-  return new URL(`/api/satellites/${noradId}/elements`, apiOrigin).href;
+  const apiUrl = new URL(queryApi || configuredIndex || document.baseURI, document.baseURI);
+  const versionPrefix = apiUrl.pathname.startsWith("/api/v1/") ? "/api/v1" : "/api";
+  return new URL(`${versionPrefix}/satellites/${noradId}/elements`, apiUrl.origin).href;
 }
 
 function ensureSatelliteGlobe() {

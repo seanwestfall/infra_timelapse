@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-DEFAULT_INDEX_URL = "https://if-api.acceler.workers.dev/api/index"
+DEFAULT_INDEX_URL = "https://if-api.acceler.workers.dev/api/v1/index"
 
 
 def index_url(api_base: str) -> str:
@@ -23,7 +23,7 @@ def index_url(api_base: str) -> str:
         raise ValueError("TIMELAPSE_API_BASE must not contain a path, query, or fragment")
     if parsed.username or parsed.password:
         raise ValueError("TIMELAPSE_API_BASE must not contain credentials")
-    return f"{value}/api/index"
+    return f"{value}/api/v1/index"
 
 
 def main() -> None:
