@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "production": {
+    "branch": "main",
+    "pages_project": "infratimelapse",
+    "pages_origin": "https://infratimelapse.pages.dev",
+    "worker_origin": "https://if-api.acceler.workers.dev"
+  },
+  "cors": {
+    "additional_exact_origins": [],
+    "https_subdomain_suffixes": [
+      ".infratimelapse.pages.dev"
+    ]
+  }
+}

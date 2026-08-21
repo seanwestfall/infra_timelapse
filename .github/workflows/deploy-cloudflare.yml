@@ -41,6 +41,8 @@ jobs:
 
       - run: npm install
 
+      - run: npm run validate:manifest
+
       - run: npm test
 
       - run: pip install -r requirements.txt
@@ -83,6 +85,10 @@ jobs:
             --worker "${worker_mode}" \
             --base-ref "${EVENT_BEFORE}" \
             --head-ref "${EVENT_SHA}" | tee "${RUNNER_TEMP}/cloudflare-deploy.log"
+
+      - name: Verify production after deployment
+        if: github.event_name != 'pull_request'
+        run: bash deploy/check_production.sh
 
       - name: Publish preview address
         if: github.event_name == 'pull_request'

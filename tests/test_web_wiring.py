@@ -11,9 +11,7 @@ class WebWiringTests(unittest.TestCase):
         html = (REPOSITORY_ROOT / "web" / "public" / "index.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/v1/index"', html
-        )
+        self.assertIn('content="__TIMELAPSE_INDEX_URL__"', html)
         self.assertIn(
             "collectCaptures(indexResult.data, { index_url: indexResult.url })",
             html,
@@ -35,11 +33,21 @@ class WebWiringTests(unittest.TestCase):
         self.assertLess(html.index('id="satellite-card"'), map_end)
         self.assertLess(map_end, image_stage_start)
         self.assertIn(
-            'import * as maplibregl from "https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"',
+            'import * as maplibregl from "https://unpkg.com/maplibre-gl@6.4.1/dist/maplibre-gl.mjs"',
             html,
         )
         self.assertNotIn("dist/maplibre-gl.js", html)
         self.assertIn('versionPrefix = apiUrl.pathname.startsWith("/api/v1/")', html)
+        self.assertIn("const SATELLITE_GLOBE_STYLE", html)
+        self.assertIn('projection: { type: "globe" }', html)
+        self.assertIn('"atmosphere-blend"', html)
+        self.assertIn("style: SATELLITE_GLOBE_STYLE", html)
+        self.assertIn("addMapLayers();\n  ensureSatelliteGlobe();", html)
+        self.assertIn('addSource("satellite-orbit-trail"', html)
+        self.assertIn('id: "satellite-orbit-trail"', html)
+        self.assertIn("function updateSatelliteOrbitTrail", html)
+        self.assertIn("const trailMinutes = 105", html)
+        self.assertIn('"line-opacity": ["get", "opacity"]', html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
 
@@ -76,9 +84,21 @@ class WebWiringTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("env.API_BASE_URL", worker)
         self.assertIn("env.ORIGIN_AUTH_TOKEN", worker)
+        self.assertIn("cloudflareManifest.production.pages_origin", worker)
+        self.assertIn("MANIFEST_ALLOWED_SUFFIXES", worker)
         self.assertIn('const CELESTRAK_BASE = "https://celestrak.org/', worker)
         self.assertIn("SATELLITE_PREFIX", worker)
         self.assertNotIn("storage.googleapis.com", worker)
+        wrangler = (
+            REPOSITORY_ROOT / "web" / "worker" / "wrangler.jsonc"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("infratimelapse.pages.dev", wrangler)
+        deploy_script = (
+            REPOSITORY_ROOT / "deploy" / "deploy_cloudflare.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('deployment_branch="${GITHUB_REF_NAME:-', deploy_script)
+        self.assertIn("wrangler versions upload", deploy_script)
+        self.assertIn("expected ${PRODUCTION_BRANCH}", deploy_script)
 
 
 if __name__ == "__main__":

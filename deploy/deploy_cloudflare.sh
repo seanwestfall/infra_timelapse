@@ -2,12 +2,15 @@
 set -euo pipefail
 
 REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON_COMMAND="${PYTHON:-python3}"
+MANIFEST_TOOL="${REPOSITORY_ROOT}/deploy/cloudflare_manifest.py"
+PRODUCTION_BRANCH="$("${PYTHON_COMMAND}" "${MANIFEST_TOOL}" get production.branch)"
 PAGES_MODE="auto"
 WORKER_MODE="production"
 BASE_REF=""
 HEAD_REF="HEAD"
-PAGES_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-infratimelapse}"
-PAGES_BRANCH="${CLOUDFLARE_PAGES_BRANCH:-main}"
+PAGES_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-$("${PYTHON_COMMAND}" "${MANIFEST_TOOL}" get production.pages_project)}"
+PAGES_BRANCH="${CLOUDFLARE_PAGES_BRANCH:-${PRODUCTION_BRANCH}}"
 
 usage() {
   cat <<'EOF'
@@ -22,8 +25,8 @@ Options:
   --help                      Show this help.
 
 Environment:
-  CLOUDFLARE_PAGES_PROJECT    Pages project name (default: infratimelapse).
-  CLOUDFLARE_PAGES_BRANCH     Pages deployment branch (default: main).
+  CLOUDFLARE_PAGES_PROJECT    Pages project name (default: manifest value).
+  CLOUDFLARE_PAGES_BRANCH     Pages deployment branch (default: manifest value).
   TIMELAPSE_API_BASE          Optional HTTPS Worker origin for separate-host mode.
   CLOUDFLARE_WORKER_ALIAS     Optional preview alias (defaults to Pages branch).
 EOF
@@ -69,6 +72,7 @@ if [[ ! " ${WORKER_MODE} " =~ ^\ (production|preview|never)\ $ ]]; then
 fi
 
 cd "${REPOSITORY_ROOT}"
+"${PYTHON_COMMAND}" "${MANIFEST_TOOL}" validate
 
 if [[ "${WORKER_MODE}" != "never" ]]; then
   if grep -q "replace-with-cloud-run-service" web/worker/wrangler.jsonc; then
@@ -76,6 +80,11 @@ if [[ "${WORKER_MODE}" != "never" ]]; then
     exit 78
   fi
   if [[ "${WORKER_MODE}" == "production" ]]; then
+    deployment_branch="${GITHUB_REF_NAME:-$(git branch --show-current)}"
+    if [[ "${deployment_branch}" != "${PRODUCTION_BRANCH}" ]]; then
+      echo "Refusing to deploy the production Worker from ${deployment_branch:-detached HEAD}; expected ${PRODUCTION_BRANCH}" >&2
+      exit 65
+    fi
     echo "Deploying standalone Worker to production"
     npx --no-install wrangler deploy --config web/worker/wrangler.jsonc
   else
@@ -127,6 +136,7 @@ case "${PAGES_MODE}" in
         infra_timelapse_ports_corridors.json \
         deploy/build_web.sh \
         deploy/render_web.py \
+        deploy/cloudflare-manifest.json \
         wrangler.toml; then
         deploy_pages=true
       fi

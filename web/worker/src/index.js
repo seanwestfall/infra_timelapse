@@ -1,4 +1,5 @@
 import { DATABASE_PATHS, queryInventory } from "./database.js";
+import cloudflareManifest from "../../../deploy/cloudflare-manifest.json" with { type: "json" };
 
 const INDEX_PATH = "/api/index";
 const CAPTURE_PREFIX = "/api/captures/";
@@ -21,6 +22,12 @@ const FORWARDED_RESPONSE_HEADERS = [
   "etag",
   "last-modified",
 ];
+const MANIFEST_ALLOWED_ORIGINS = new Set([
+  cloudflareManifest.production.pages_origin,
+  ...(cloudflareManifest.cors.additional_exact_origins || []),
+]);
+const MANIFEST_ALLOWED_SUFFIXES =
+  cloudflareManifest.cors.https_subdomain_suffixes || [];
 
 function jsonResponse(body, status, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
@@ -112,24 +119,34 @@ function satelliteId(pathname) {
 function allowedOrigin(request, env) {
   const origin = request.headers.get("Origin");
   if (!origin) return { allowed: true, origin: null };
-  const allowed = String(env.ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  let previewAllowed = false;
-  const previewSuffix = String(env.PAGES_PREVIEW_SUFFIX || "").trim();
-  if (previewSuffix.startsWith(".") && previewSuffix.length > 1) {
-    try {
-      const candidate = new URL(origin);
-      previewAllowed = candidate.protocol === "https:" &&
-        candidate.origin === origin &&
-        candidate.hostname.endsWith(previewSuffix) &&
-        candidate.hostname.length > previewSuffix.length;
-    } catch {
-      previewAllowed = false;
-    }
+  const allowed = new Set([
+    ...MANIFEST_ALLOWED_ORIGINS,
+    ...String(env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ]);
+  const suffixes = [
+    ...MANIFEST_ALLOWED_SUFFIXES,
+    ...String(env.ALLOWED_ORIGIN_SUFFIXES || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    String(env.PAGES_PREVIEW_SUFFIX || "").trim(),
+  ].filter((suffix) => suffix.startsWith(".") && suffix.length > 1);
+  let suffixAllowed = false;
+  try {
+    const candidate = new URL(origin);
+    suffixAllowed = candidate.protocol === "https:" &&
+      candidate.origin === origin &&
+      suffixes.some((suffix) =>
+        candidate.hostname.endsWith(suffix) &&
+        candidate.hostname.length > suffix.length
+      );
+  } catch {
+    suffixAllowed = false;
   }
-  return { allowed: allowed.includes(origin) || previewAllowed, origin };
+  return { allowed: allowed.has(origin) || suffixAllowed, origin };
 }
 
 function cacheControl(kind) {

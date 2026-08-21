@@ -143,39 +143,52 @@ test("rejects unapproved cross-origin requests", async () => {
   assert.equal(response.status, 403);
 });
 
-test("allows only HTTPS preview subdomains for the configured Pages project", async () => {
+test("always allows origins declared by the deployment manifest", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response('{"manifests":[]}');
   try {
-    const allowed = await handleRequest(
-      new Request("https://api.example/api/index", {
-        headers: {
-          Origin: "https://feature-abc.infratimelapse.pages.dev",
-        },
-      }),
-      ENV,
-    );
-    assert.equal(allowed.status, 200);
-    assert.equal(
-      allowed.headers.get("access-control-allow-origin"),
-      "https://feature-abc.infratimelapse.pages.dev",
-    );
-
     for (const origin of [
-      "http://feature-abc.infratimelapse.pages.dev",
-      "https://infratimelapse.pages.dev.evil.example",
       "https://infratimelapse.pages.dev",
+      "https://feature-abc.infratimelapse.pages.dev",
     ]) {
-      const rejected = await handleRequest(
+      const response = await handleRequest(
         new Request("https://api.example/api/index", {
           headers: { Origin: origin },
         }),
-        { ...ENV, ALLOWED_ORIGINS: "" },
+        {
+          ...ENV,
+          ALLOWED_ORIGINS: "",
+          ALLOWED_ORIGIN_SUFFIXES: "",
+          PAGES_PREVIEW_SUFFIX: "",
+        },
+        context(),
       );
-      assert.equal(rejected.status, 403, origin);
+      assert.equal(response.status, 200, origin);
+      assert.equal(response.headers.get("access-control-allow-origin"), origin);
     }
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("manifest suffixes reject insecure and lookalike domains", async () => {
+  for (const origin of [
+    "http://feature-abc.infratimelapse.pages.dev",
+    "https://infratimelapse.pages.dev.evil.example",
+    "https://evilpages.dev",
+  ]) {
+    const response = await handleRequest(
+      new Request("https://api.example/api/index", {
+        headers: { Origin: origin },
+      }),
+      {
+        ...ENV,
+        ALLOWED_ORIGINS: "",
+        ALLOWED_ORIGIN_SUFFIXES: "",
+        PAGES_PREVIEW_SUFFIX: "",
+      },
+    );
+    assert.equal(response.status, 403, origin);
   }
 });
 
