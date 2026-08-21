@@ -38,6 +38,8 @@ jobs:
 
       - run: npm install
 
+      - run: npm run validate:manifest
+
       - run: npm test
 
       - run: pip install -r requirements.txt
@@ -64,3 +66,6 @@ jobs:
             --pages "${pages_mode}" \
             --base-ref "${EVENT_BEFORE}" \
             --head-ref "${EVENT_SHA}"
+
+      - name: Verify production CORS and capture delivery
+        run: bash deploy/check_production.sh

@@ -120,19 +120,39 @@ public OMM JSON from CelesTrak and caches successful responses for two hours;
 the browser propagates those elements locally for the live globe marker. No
 satellite API key is required. Do not lower the upstream refresh interval.
 
-If Pages and the Worker use separate hostnames, set `ALLOWED_ORIGINS` in the
-Worker configuration to a comma-separated list of the exact Pages production
-and preview origins. Leave it empty for same-origin routing. Worker routes are
-intentionally absent from the repository configuration so dashboard-managed
-routes are not overwritten by a later Wrangler deployment.
+## Cloudflare deployment manifest
+
+`deploy/cloudflare-manifest.json` is the single repository-owned source for the
+production branch, Pages project, canonical Pages and Worker origins, and CORS
+trust policy. The Worker bundles this manifest, the Pages renderer reads it,
+and deployment and smoke-test scripts resolve their defaults from it. A missing
+or empty Wrangler variable therefore cannot remove the canonical production
+origin again.
+
+To trust another fixed frontend, add its complete HTTPS origin to
+`cors.additional_exact_origins`. To trust branch previews for a project-owned
+hostname, add the narrow project-specific suffix to
+`cors.https_subdomain_suffixes`; do not add broad suffixes such as
+`.pages.dev`, `.vercel.app`, or `.netlify.app`. Validate changes with:
+
+```bash
+npm run validate:manifest
+npm test
+```
+
+`ALLOWED_ORIGINS`, `ALLOWED_ORIGIN_SUFFIXES`, and the legacy
+`PAGES_PREVIEW_SUFFIX` Worker variables may extend the manifest during an
+emergency, but cannot remove its repository-owned origins. Worker routes remain
+absent from the repository configuration so dashboard-managed routes are not
+overwritten by a later Wrangler deployment.
 
 ## Deploy the Worker and Cloudflare Pages
 
-The deployment script always deploys the Worker by default and lets you select
-when the static Pages bundle should be deployed:
+The deployment script promotes the Worker only from the manifest's production
+branch and lets you select when the static Pages bundle should be deployed:
 
 ```bash
-# Always deploy the Worker; deploy Pages only when frontend inputs changed.
+# From main, deploy the Worker and deploy Pages only when frontend inputs changed.
 npm run deploy -- --pages auto --base-ref HEAD^ --head-ref HEAD
 
 # Deploy both regardless of the Git diff.
@@ -155,6 +175,15 @@ It tests and deploys the Worker every time, while deploying Pages only when a
 static input changed. Configure its protected `production` environment with
 the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. Optional
 variables are `CLOUDFLARE_PAGES_PROJECT` and `TIMELAPSE_API_BASE`.
+
+Cloudflare Workers Builds has a separate provider-side branch control that no
+repository manifest can override. In the `if-api` dashboard, set the production
+branch to `main` and either disable builds for non-production branches or set
+their deploy command to `npx wrangler versions upload --config
+web/worker/wrangler.jsonc`. A non-production branch must never run `wrangler
+deploy`. The repository script rejects such a promotion, and
+`deploy/check_production.sh` verifies the live index CORS header plus one real
+PNG after every controlled production deployment.
 
 For a manual Pages-only integration, use:
 

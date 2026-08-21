@@ -8,14 +8,16 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+from cloudflare_manifest import load_manifest
 
-DEFAULT_INDEX_URL = "https://if-api.acceler.workers.dev/api/index"
+
+INDEX_URL_PLACEHOLDER = "__TIMELAPSE_INDEX_URL__"
 
 
 def index_url(api_base: str) -> str:
     value = api_base.strip().rstrip("/")
     if not value:
-        return DEFAULT_INDEX_URL
+        value = load_manifest()["production"]["worker_origin"]
     parsed = urlparse(value)
     if parsed.scheme != "https" or not parsed.netloc or parsed.params:
         raise ValueError("TIMELAPSE_API_BASE must be an HTTPS origin")
@@ -32,10 +34,10 @@ def main() -> None:
     source = Path(sys.argv[1])
     destination = Path(sys.argv[2])
     document = source.read_text(encoding="utf-8")
-    if document.count(DEFAULT_INDEX_URL) != 1:
-        raise RuntimeError(f"Expected exactly one {DEFAULT_INDEX_URL} value")
+    if document.count(INDEX_URL_PLACEHOLDER) != 1:
+        raise RuntimeError(f"Expected exactly one {INDEX_URL_PLACEHOLDER} value")
     rendered = document.replace(
-        DEFAULT_INDEX_URL,
+        INDEX_URL_PLACEHOLDER,
         html.escape(index_url(os.getenv("TIMELAPSE_API_BASE", "")), quote=True),
     )
     destination.write_text(rendered, encoding="utf-8")

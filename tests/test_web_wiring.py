@@ -11,9 +11,7 @@ class WebWiringTests(unittest.TestCase):
         html = (REPOSITORY_ROOT / "web" / "public" / "index.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/index"', html
-        )
+        self.assertIn('content="__TIMELAPSE_INDEX_URL__"', html)
         self.assertIn(
             "collectCaptures(indexResult.data, { index_url: indexResult.url })",
             html,
@@ -78,9 +76,15 @@ class WebWiringTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("env.API_BASE_URL", worker)
         self.assertIn("env.ORIGIN_AUTH_TOKEN", worker)
+        self.assertIn("cloudflareManifest.production.pages_origin", worker)
+        self.assertIn("MANIFEST_ALLOWED_SUFFIXES", worker)
         self.assertIn('const CELESTRAK_BASE = "https://celestrak.org/', worker)
         self.assertIn("SATELLITE_PREFIX", worker)
         self.assertNotIn("storage.googleapis.com", worker)
+        wrangler = (
+            REPOSITORY_ROOT / "web" / "worker" / "wrangler.jsonc"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("infratimelapse.pages.dev", wrangler)
 
 
 if __name__ == "__main__":

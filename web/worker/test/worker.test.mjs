@@ -108,6 +108,55 @@ test("rejects unapproved cross-origin requests", async () => {
   assert.equal(response.status, 403);
 });
 
+test("always allows origins declared by the deployment manifest", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{"manifests":[]}');
+  try {
+    for (const origin of [
+      "https://infratimelapse.pages.dev",
+      "https://feature-abc.infratimelapse.pages.dev",
+    ]) {
+      const response = await handleRequest(
+        new Request("https://api.example/api/index", {
+          headers: { Origin: origin },
+        }),
+        {
+          ...ENV,
+          ALLOWED_ORIGINS: "",
+          ALLOWED_ORIGIN_SUFFIXES: "",
+          PAGES_PREVIEW_SUFFIX: "",
+        },
+        context(),
+      );
+      assert.equal(response.status, 200, origin);
+      assert.equal(response.headers.get("access-control-allow-origin"), origin);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("manifest suffixes do not trust the suffix apex or lookalike domains", async () => {
+  for (const origin of [
+    "http://feature-abc.infratimelapse.pages.dev",
+    "https://infratimelapse.pages.dev.evil.example",
+    "https://evilpages.dev",
+  ]) {
+    const response = await handleRequest(
+      new Request("https://api.example/api/index", {
+        headers: { Origin: origin },
+      }),
+      {
+        ...ENV,
+        ALLOWED_ORIGINS: "",
+        ALLOWED_ORIGIN_SUFFIXES: "",
+        PAGES_PREVIEW_SUFFIX: "",
+      },
+    );
+    assert.equal(response.status, 403, origin);
+  }
+});
+
 test("caches successful images but not upstream errors", async () => {
   const originalFetch = globalThis.fetch;
   const cache = memoryCache();

@@ -2,12 +2,15 @@
 set -euo pipefail
 
 REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON_COMMAND="${PYTHON:-python3}"
+MANIFEST_TOOL="${REPOSITORY_ROOT}/deploy/cloudflare_manifest.py"
+PRODUCTION_BRANCH="$("${PYTHON_COMMAND}" "${MANIFEST_TOOL}" get production.branch)"
 PAGES_MODE="auto"
-WORKER_MODE="always"
+WORKER_MODE="production"
 BASE_REF=""
 HEAD_REF="HEAD"
-PAGES_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-infra-timelapse}"
-PAGES_BRANCH="${CLOUDFLARE_PAGES_BRANCH:-main}"
+PAGES_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-$("${PYTHON_COMMAND}" "${MANIFEST_TOOL}" get production.pages_project)}"
+PAGES_BRANCH="${CLOUDFLARE_PAGES_BRANCH:-${PRODUCTION_BRANCH}}"
 
 usage() {
   cat <<'EOF'
@@ -15,14 +18,14 @@ Usage: deploy/deploy_cloudflare.sh [options]
 
 Options:
   --pages auto|always|never   Deploy Pages when changed, always, or never.
-  --worker always|never       Deploy or skip the standalone Worker.
+  --worker production|never   Promote the Worker or skip it.
   --base-ref REF              Base Git revision for --pages auto.
   --head-ref REF              Head Git revision for --pages auto (default: HEAD).
   --help                      Show this help.
 
 Environment:
-  CLOUDFLARE_PAGES_PROJECT    Pages project name (default: infra-timelapse).
-  CLOUDFLARE_PAGES_BRANCH     Pages deployment branch (default: main).
+  CLOUDFLARE_PAGES_PROJECT    Pages project name (default: manifest value).
+  CLOUDFLARE_PAGES_BRANCH     Pages deployment branch (default: manifest value).
   TIMELAPSE_API_BASE          Optional HTTPS Worker origin for separate-host mode.
 EOF
 }
@@ -61,14 +64,20 @@ if [[ ! " ${PAGES_MODE} " =~ ^\ (auto|always|never)\ $ ]]; then
   echo "--pages must be auto, always, or never" >&2
   exit 64
 fi
-if [[ ! " ${WORKER_MODE} " =~ ^\ (always|never)\ $ ]]; then
-  echo "--worker must be always or never" >&2
+if [[ ! " ${WORKER_MODE} " =~ ^\ (production|never)\ $ ]]; then
+  echo "--worker must be production or never" >&2
   exit 64
 fi
 
 cd "${REPOSITORY_ROOT}"
+"${PYTHON_COMMAND}" "${MANIFEST_TOOL}" validate
 
-if [[ "${WORKER_MODE}" == "always" ]]; then
+if [[ "${WORKER_MODE}" == "production" ]]; then
+  deployment_branch="${GITHUB_REF_NAME:-$(git branch --show-current)}"
+  if [[ "${deployment_branch}" != "${PRODUCTION_BRANCH}" ]]; then
+    echo "Refusing to deploy the production Worker from ${deployment_branch:-detached HEAD}; expected ${PRODUCTION_BRANCH}" >&2
+    exit 65
+  fi
   if grep -q "replace-with-cloud-run-service" web/worker/wrangler.jsonc; then
     echo "Set API_BASE_URL in web/worker/wrangler.jsonc before deploying" >&2
     exit 78
@@ -103,6 +112,7 @@ case "${PAGES_MODE}" in
         infra_timelapse_ports_corridors.json \
         deploy/build_web.sh \
         deploy/render_web.py \
+        deploy/cloudflare-manifest.json \
         wrangler.toml; then
         deploy_pages=true
       fi
