@@ -387,9 +387,11 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
   const ctx = context();
   let calls = 0;
   let observedUrl;
-  const fetchSatelliteElements = async (url) => {
+  let observedOptions;
+  const fetchSatelliteElements = async (url, options) => {
     calls += 1;
     observedUrl = String(url);
+    observedOptions = options;
     return Response.json([
       {
         OBJECT_NAME: "LANDSAT 8",
@@ -427,6 +429,8 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
     observedUrl,
     "https://celestrak.org/NORAD/elements/gp.php?CATNR=39084&FORMAT=JSON",
   );
+  assert.equal(observedOptions.redirect, "follow");
+  assert.equal(observedOptions.headers.Accept, "application/json");
   assert.equal(
     first.headers.get("cache-control"),
     "public, max-age=300, s-maxage=7200, stale-if-error=86400",
@@ -467,7 +471,9 @@ test("rejects unlisted satellites and hides CelesTrak failures", async () => {
   console.error = () => {};
   try {
     const failed = await handleRequest(
-      new Request("https://api.example/api/satellites/49260/elements"),
+      new Request("https://api.example/api/satellites/49260/elements", {
+        headers: { Origin: "https://infra.example" },
+      }),
       ENV,
       context(),
       null,
@@ -477,6 +483,10 @@ test("rejects unlisted satellites and hides CelesTrak failures", async () => {
     assert.deepEqual(await failed.json(), {
       error: "Satellite elements unavailable",
     });
+    assert.equal(
+      failed.headers.get("access-control-allow-origin"),
+      "https://infra.example",
+    );
     assert.equal(calls, 1);
   } finally {
     console.error = originalError;

@@ -189,6 +189,14 @@ function responseWithCors(response, corsOrigin, method = "GET") {
   });
 }
 
+function satelliteError(corsOrigin, method = "GET") {
+  return responseWithCors(
+    jsonResponse({ error: "Satellite elements unavailable" }, 502),
+    corsOrigin,
+    method,
+  );
+}
+
 async function satelliteResponse(
   request,
   ctx,
@@ -212,16 +220,19 @@ async function satelliteResponse(
   let upstream;
   try {
     upstream = await fetchSatelliteElements(upstreamUrl, {
-      headers: { Accept: "application/json" },
-      redirect: "error",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "InfraTimelapse-SatelliteTracker/1.0",
+      },
+      redirect: "follow",
     });
   } catch (error) {
     console.error("CelesTrak request failed", error);
-    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+    return satelliteError(corsOrigin, request.method);
   }
   if (!upstream.ok) {
     console.error("CelesTrak returned", upstream.status);
-    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+    return satelliteError(corsOrigin, request.method);
   }
 
   let records;
@@ -229,12 +240,12 @@ async function satelliteResponse(
     records = await upstream.json();
   } catch (error) {
     console.error("CelesTrak returned invalid JSON", error);
-    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+    return satelliteError(corsOrigin, request.method);
   }
   const elements = Array.isArray(records) ? records[0] : null;
   if (!elements || String(elements.NORAD_CAT_ID) !== noradId || !elements.EPOCH) {
     console.error("CelesTrak returned unexpected elements");
-    return jsonResponse({ error: "Satellite elements unavailable" }, 502);
+    return satelliteError(corsOrigin, request.method);
   }
 
   const response = jsonResponse(
