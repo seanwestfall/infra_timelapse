@@ -42,6 +42,7 @@ class WebWiringTests(unittest.TestCase):
         self.assertIn("function updateSatelliteOrbitTrail", html)
         self.assertIn("const trailMinutes = 105", html)
         self.assertIn('"line-opacity": ["get", "opacity"]', html)
+        self.assertIn("zoom: 0.35", html)
         self.assertIn('versionPrefix = apiUrl.pathname.startsWith("/api/v1/")', html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
