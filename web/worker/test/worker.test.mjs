@@ -450,7 +450,7 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
   assert.equal(payload.elements.OBJECT_NAME, "LANDSAT 8");
 });
 
-test("rejects unlisted satellites and hides CelesTrak failures", async () => {
+test("rejects unlisted satellites and falls back when CelesTrak fails", async () => {
   let calls = 0;
   const fetchSatelliteElements = async () => {
     calls += 1;
@@ -479,10 +479,12 @@ test("rejects unlisted satellites and hides CelesTrak failures", async () => {
       null,
       { fetchSatelliteElements },
     );
-    assert.equal(failed.status, 502);
-    assert.deepEqual(await failed.json(), {
-      error: "Satellite elements unavailable",
-    });
+    assert.equal(failed.status, 200);
+    const fallback = await failed.json();
+    assert.equal(fallback.source, "CelesTrak snapshot");
+    assert.equal(fallback.stale, true);
+    assert.equal(fallback.norad_id, 49260);
+    assert.equal(fallback.elements.NORAD_CAT_ID, 49260);
     assert.equal(
       failed.headers.get("access-control-allow-origin"),
       "https://infra.example",

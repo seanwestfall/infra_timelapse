@@ -12,6 +12,12 @@ const SATELLITES = new Map([
   ["42063", "Sentinel-2B"],
   ["60989", "Sentinel-2C"],
 ]);
+const FALLBACK_SATELLITE_ELEMENTS = new Map([
+  ["39084", { OBJECT_NAME: "LANDSAT 8", OBJECT_ID: "2013-008A", EPOCH: "2026-08-22T15:13:47.149536", MEAN_MOTION: 14.5710376, ECCENTRICITY: 0.00012666, INCLINATION: 98.2253, RA_OF_ASC_NODE: 303.9635, ARG_OF_PERICENTER: 93.6891, MEAN_ANOMALY: 266.4453, EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 39084, ELEMENT_SET_NO: 999, REV_AT_EPOCH: 70757, BSTAR: 6.0750701e-5, MEAN_MOTION_DOT: 2.28e-6, MEAN_MOTION_DDOT: 0 }],
+  ["49260", { OBJECT_NAME: "LANDSAT 9", OBJECT_ID: "2021-088A", EPOCH: "2026-08-22T14:24:23.936256", MEAN_MOTION: 14.57099128, ECCENTRICITY: 0.00012878, INCLINATION: 98.2234, RA_OF_ASC_NODE: 303.9571, ARG_OF_PERICENTER: 105.3989, MEAN_ANOMALY: 254.7352, EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 49260, ELEMENT_SET_NO: 999, REV_AT_EPOCH: 26067, BSTAR: 6.5256727e-5, MEAN_MOTION_DOT: 2.49e-6, MEAN_MOTION_DDOT: 0 }],
+  ["42063", { OBJECT_NAME: "SENTINEL-2B", OBJECT_ID: "2017-013A", EPOCH: "2026-08-22T15:23:05.430912", MEAN_MOTION: 14.30814937, ECCENTRICITY: 0.00012592, INCLINATION: 98.565, RA_OF_ASC_NODE: 308.4637, ARG_OF_PERICENTER: 87.8936, MEAN_ANOMALY: 272.2392, EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 42063, ELEMENT_SET_NO: 999, REV_AT_EPOCH: 49414, BSTAR: -3.991811e-6, MEAN_MOTION_DOT: -5.4e-7, MEAN_MOTION_DDOT: 0 }],
+  ["60989", { OBJECT_NAME: "SENTINEL-2C", OBJECT_ID: "2024-157A", EPOCH: "2026-08-22T11:11:21.431328", MEAN_MOTION: 14.30815408, ECCENTRICITY: 0.00014142, INCLINATION: 98.5651, RA_OF_ASC_NODE: 308.2963, ARG_OF_PERICENTER: 101.0772, MEAN_ANOMALY: 259.057, EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 60989, ELEMENT_SET_NO: 999, REV_AT_EPOCH: 10246, BSTAR: 3.9756661e-5, MEAN_MOTION_DOT: 6.1e-7, MEAN_MOTION_DDOT: 0 }],
+]);
 const ORIGIN_AUTH_HEADER = "X-Infra-Timelapse-Origin-Token";
 const FORWARDED_REQUEST_HEADERS = ["accept", "if-none-match", "range"];
 const FORWARDED_RESPONSE_HEADERS = [
@@ -189,11 +195,22 @@ function responseWithCors(response, corsOrigin, method = "GET") {
   });
 }
 
-function satelliteError(corsOrigin, method = "GET") {
+function fallbackSatelliteResponse(request, noradId, corsOrigin) {
   return responseWithCors(
-    jsonResponse({ error: "Satellite elements unavailable" }, 502),
+    jsonResponse(
+      {
+        source: "CelesTrak snapshot",
+        norad_id: Number(noradId),
+        name: SATELLITES.get(noradId),
+        fetched_at: FALLBACK_SATELLITE_ELEMENTS.get(noradId).EPOCH,
+        stale: true,
+        elements: FALLBACK_SATELLITE_ELEMENTS.get(noradId),
+      },
+      200,
+      { ...satelliteHeaders(), Warning: '110 - "Using cached orbital elements"' },
+    ),
     corsOrigin,
-    method,
+    request.method,
   );
 }
 
@@ -228,11 +245,11 @@ async function satelliteResponse(
     });
   } catch (error) {
     console.error("CelesTrak request failed", error);
-    return satelliteError(corsOrigin, request.method);
+    return fallbackSatelliteResponse(request, noradId, corsOrigin);
   }
   if (!upstream.ok) {
     console.error("CelesTrak returned", upstream.status);
-    return satelliteError(corsOrigin, request.method);
+    return fallbackSatelliteResponse(request, noradId, corsOrigin);
   }
 
   let records;
@@ -240,12 +257,12 @@ async function satelliteResponse(
     records = await upstream.json();
   } catch (error) {
     console.error("CelesTrak returned invalid JSON", error);
-    return satelliteError(corsOrigin, request.method);
+    return fallbackSatelliteResponse(request, noradId, corsOrigin);
   }
   const elements = Array.isArray(records) ? records[0] : null;
   if (!elements || String(elements.NORAD_CAT_ID) !== noradId || !elements.EPOCH) {
     console.error("CelesTrak returned unexpected elements");
-    return satelliteError(corsOrigin, request.method);
+    return fallbackSatelliteResponse(request, noradId, corsOrigin);
   }
 
   const response = jsonResponse(
