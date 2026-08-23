@@ -242,6 +242,7 @@ async function satelliteResponse(
         "User-Agent": "InfraTimelapse-SatelliteTracker/1.0",
       },
       redirect: "follow",
+      signal: AbortSignal.timeout(3000),
     });
   } catch (error) {
     console.error("CelesTrak request failed", error);

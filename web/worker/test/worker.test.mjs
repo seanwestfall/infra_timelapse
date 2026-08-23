@@ -431,6 +431,7 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
   );
   assert.equal(observedOptions.redirect, "follow");
   assert.equal(observedOptions.headers.Accept, "application/json");
+  assert.ok(observedOptions.signal instanceof AbortSignal);
   assert.equal(
     first.headers.get("cache-control"),
     "public, max-age=300, s-maxage=7200, stale-if-error=86400",
