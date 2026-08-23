@@ -77,6 +77,40 @@ test("forwards only allowlisted paths and safe headers", async () => {
   }
 });
 
+test("serves v1 routes while retaining the legacy API contract", async () => {
+  const originalFetch = globalThis.fetch;
+  const observed = [];
+  globalThis.fetch = async (url) => {
+    observed.push(String(url));
+    return new Response('{"manifests":[]}');
+  };
+  try {
+    for (const path of ["/api/index", "/api/v1/index"]) {
+      const response = await handleRequest(
+        new Request(`https://infra.example${path}`),
+        ENV,
+        context(),
+      );
+      assert.equal(response.status, 200, path);
+    }
+    assert.deepEqual(observed, [
+      "https://capture-api.example.run.app/api/index",
+      "https://capture-api.example.run.app/api/index",
+    ]);
+
+    const inventory = await handleRequest(
+      new Request("https://infra.example/api/v1/nodes"),
+      ENV,
+      context(),
+      null,
+      { createDatabaseClient: () => async () => [] },
+    );
+    assert.equal(inventory.status, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("rejects traversal, non-PNG paths, and unsupported methods", async () => {
   const cases = [
     "/api/captures/captures/run/../secret.png",
@@ -353,9 +387,11 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
   const ctx = context();
   let calls = 0;
   let observedUrl;
-  const fetchSatelliteElements = async (url) => {
+  let observedOptions;
+  const fetchSatelliteElements = async (url, options) => {
     calls += 1;
     observedUrl = String(url);
+    observedOptions = options;
     return Response.json([
       {
         OBJECT_NAME: "LANDSAT 8",
@@ -393,6 +429,9 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
     observedUrl,
     "https://celestrak.org/NORAD/elements/gp.php?CATNR=39084&FORMAT=JSON",
   );
+  assert.equal(observedOptions.redirect, "follow");
+  assert.equal(observedOptions.headers.Accept, "application/json");
+  assert.ok(observedOptions.signal instanceof AbortSignal);
   assert.equal(
     first.headers.get("cache-control"),
     "public, max-age=300, s-maxage=7200, stale-if-error=86400",
@@ -412,7 +451,7 @@ test("serves allowlisted CelesTrak elements and caches them independently of COR
   assert.equal(payload.elements.OBJECT_NAME, "LANDSAT 8");
 });
 
-test("rejects unlisted satellites and hides CelesTrak failures", async () => {
+test("rejects unlisted satellites and falls back when CelesTrak fails", async () => {
   let calls = 0;
   const fetchSatelliteElements = async () => {
     calls += 1;
@@ -433,16 +472,24 @@ test("rejects unlisted satellites and hides CelesTrak failures", async () => {
   console.error = () => {};
   try {
     const failed = await handleRequest(
-      new Request("https://api.example/api/satellites/49260/elements"),
+      new Request("https://api.example/api/satellites/49260/elements", {
+        headers: { Origin: "https://infra.example" },
+      }),
       ENV,
       context(),
       null,
       { fetchSatelliteElements },
     );
-    assert.equal(failed.status, 502);
-    assert.deepEqual(await failed.json(), {
-      error: "Satellite elements unavailable",
-    });
+    assert.equal(failed.status, 200);
+    const fallback = await failed.json();
+    assert.equal(fallback.source, "CelesTrak snapshot");
+    assert.equal(fallback.stale, true);
+    assert.equal(fallback.norad_id, 49260);
+    assert.equal(fallback.elements.NORAD_CAT_ID, 49260);
+    assert.equal(
+      failed.headers.get("access-control-allow-origin"),
+      "https://infra.example",
+    );
     assert.equal(calls, 1);
   } finally {
     console.error = originalError;

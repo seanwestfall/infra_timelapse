@@ -12,6 +12,47 @@ Infra Timelapse has three deliberately separate pieces:
 
 The browser never receives a `gs://` URI or an anonymous Cloud Storage URL.
 
+## Feature preview process
+
+Frontend features are developed on dedicated branches and reviewed through a
+pull request before production deployment. Pull requests originating from this
+repository run the complete test/build suite, upload an isolated `if-api`
+Worker version, and deploy the static Pages frontend against that version. A
+preview upload does not change the Worker's active production deployment.
+
+Cloudflare Pages publishes an immutable deployment URL and a moving branch
+alias. The workflow reports Cloudflare's returned deployment URL in its GitHub
+Actions job summary rather than predicting an alias, because Pages may shorten
+long branch names. Production remains restricted to pushes on `main`.
+
+Recommended feature flow:
+
+1. Branch from the current integration branch.
+2. Commit and push the feature branch.
+3. Open a draft pull request and wait for tests plus the Worker and Pages previews.
+4. Review the preview URL from the Actions summary before marking the PR ready.
+5. Merge through the PR; never deploy a feature branch as production.
+
+The preview job uses `wrangler versions upload --preview-alias <branch>` and
+captures the URL returned by Wrangler. `TIMELAPSE_API_BASE` is set to that URL
+before the Pages bundle is rendered, so every feature frontend is pinned to its
+corresponding feature API. Only the `main` workflow uses `wrangler deploy`.
+
+The browser uses the versioned `/api/v1/...` contract. The Worker continues to
+accept the legacy `/api/...` paths, keeping the already-deployed main bundle
+compatible while newer previews move independently. API path versioning
+protects the browser contract; Worker version previews protect runtime and
+configuration isolation.
+
+The `if-api` Workers Builds integration must use `main` as its production
+branch. In **Settings → Build → Branch control**, either disable builds for
+non-production branches or set the non-production deploy command to
+`npx wrangler versions upload --config web/worker/wrangler.jsonc`; it must not
+run `wrangler deploy`. Limit Worker build watch paths to `web/worker/**`,
+`package.json`, and `package-lock.json`. Pull requests also run
+`deploy/check_production.sh`, which fails if the production index loses CORS or
+an indexed image cannot be fetched.
+
 ## Google Cloud prerequisites
 
 - Google Cloud CLI installed and authenticated
@@ -103,12 +144,15 @@ bundle. The equivalent direct Wrangler command is:
 npx wrangler secret put DATABASE_URL --config web/worker/wrangler.jsonc
 ```
 
-The Worker reads only the schema-qualified `infratimelapse` tables and exposes:
+The Worker reads only the schema-qualified `infratimelapse` tables and exposes
+the following under `/api/v1` (with `/api` retained as a compatibility alias):
 
-- `GET /api/nodes`
-- `GET /api/corridors`
-- `GET /api/projects`
-- `GET /api/satellites/{norad_id}/elements`
+- `GET /api/v1/index`
+- `GET /api/v1/captures/{capture_path}`
+- `GET /api/v1/nodes`
+- `GET /api/v1/corridors`
+- `GET /api/v1/projects`
+- `GET /api/v1/satellites/{norad_id}/elements`
 
 These inventory responses are cached at the edge for five minutes. Deprecated
 entities are excluded. Database failures return bounded `502`/`503` responses
@@ -161,6 +205,9 @@ npm run deploy -- --pages always
 # Deploy only the Worker.
 npm run deploy -- --pages never
 
+# Upload a feature Worker version and deploy Pages against its preview URL.
+npm run deploy:preview
+
 # Deploy only Pages.
 npm run deploy -- --worker never --pages always
 ```
@@ -168,7 +215,7 @@ npm run deploy -- --worker never --pages always
 `--pages auto` watches `web/public/`, the packaged inventory, the web build
 files, and the Pages Wrangler configuration. Set `TIMELAPSE_API_BASE` during
 the build only when the API uses a separate HTTPS hostname; otherwise the
-rendered page uses same-origin `/api/index`.
+rendered page uses the configured Worker's `/api/v1/index`.
 
 The `Deploy Cloudflare` GitHub Actions workflow runs on each update to `main`.
 It tests and deploys the Worker every time, while deploying Pages only when a

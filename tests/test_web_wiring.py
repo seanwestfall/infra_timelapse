@@ -37,12 +37,13 @@ class WebWiringTests(unittest.TestCase):
         self.assertIn('"atmosphere-blend"', html)
         self.assertIn("style: SATELLITE_GLOBE_STYLE", html)
         self.assertIn("addMapLayers();\n  ensureSatelliteGlobe();", html)
-        self.assertIn('addSource("satellite-orbit-trail"', html)
-        self.assertIn('id: "satellite-orbit-trail"', html)
+        self.assertIn('class="orbit-back"', html)
+        self.assertIn('class="orbit-front"', html)
+        self.assertIn('id="satellite-orbit-marker"', html)
         self.assertIn("function updateSatelliteOrbitTrail", html)
-        self.assertIn("const trailMinutes = 105", html)
-        self.assertIn('"line-opacity": ["get", "opacity"]', html)
-        self.assertIn("/api/satellites/${noradId}/elements", html)
+        self.assertIn("ellipseX = 108 * Math.cos(phase)", html)
+        self.assertIn("zoom: 0", html)
+        self.assertIn('versionPrefix = apiUrl.pathname.startsWith("/api/v1/")', html)
         self.assertIn("satellite.js@6.0.1", html)
         self.assertNotIn("storage.googleapis.com", html)
 
@@ -59,7 +60,7 @@ class WebWiringTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn(
-            'content="https://if-api.acceler.workers.dev/api/index"', rendered
+            'content="https://if-api.acceler.workers.dev/api/v1/index"', rendered
         )
         self.assertNotIn("__TIMELAPSE_INDEX_URL__", rendered)
         self.assertTrue(
