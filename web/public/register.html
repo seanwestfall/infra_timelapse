@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="register-url" content="__REGISTER_URL__">
+  <meta name="description" content="Request access to Infra Timelapse Explorer.">
+  <title>Request access · Infra Timelapse Explorer</title>
+  <style>
+    :root { color-scheme: dark; --ink:#f8fafc; --muted:#94a3b8; --panel:#111827; --line:#334155; --teal:#2dd4bf; --teal-dark:#0f766e; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:radial-gradient(circle at 14% 8%,#134e4a 0,transparent 31rem),#030712; }
+    a { color:#5eead4; }
+    a:focus-visible, input:focus-visible, button:focus-visible { outline:3px solid #5eead4; outline-offset:3px; }
+    .shell { width:min(1080px,calc(100% - 2rem)); margin:auto; padding:1.25rem 0 4rem; }
+    nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:clamp(3rem,10vw,7rem); }
+    .brand { color:var(--ink); text-decoration:none; font-weight:700; letter-spacing:-.02em; }
+    .back { color:#cbd5e1; text-decoration:none; font-size:.9rem; }
+    main { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(18rem,.8fr); gap:clamp(2rem,7vw,6rem); align-items:start; }
+    .eyebrow { margin:0 0 1rem; color:var(--teal); font-size:.75rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
+    h1 { max-width:12ch; margin:0; font-size:clamp(2.8rem,7vw,5.8rem); line-height:.95; letter-spacing:-.065em; }
+    .lede { max-width:38rem; margin:1.5rem 0 2.5rem; color:#cbd5e1; font-size:clamp(1rem,2vw,1.2rem); line-height:1.65; }
+    form { max-width:38rem; }
+    label { display:block; margin-bottom:.55rem; font-size:.85rem; font-weight:700; }
+    .field { display:flex; gap:.65rem; }
+    input { min-width:0; flex:1; border:1px solid var(--line); border-radius:.6rem; padding:.95rem 1rem; color:var(--ink); background:#0f172a; font:inherit; }
+    input::placeholder { color:#64748b; }
+    button { border:0; border-radius:.6rem; padding:.95rem 1.2rem; color:white; background:var(--teal-dark); font:inherit; font-weight:800; cursor:pointer; }
+    button:hover:not(:disabled) { background:#0d9488; }
+    button:disabled { opacity:.6; cursor:wait; }
+    #form-status { min-height:1.5rem; margin:.8rem 0 0; color:#cbd5e1; font-size:.9rem; }
+    #form-status[data-state="error"] { color:#fca5a5; }
+    #form-status[data-state="success"] { color:#5eead4; }
+    .privacy { border-top:1px solid var(--line); padding-top:1.4rem; }
+    .privacy h2 { margin:0 0 1rem; font-size:1rem; letter-spacing:.04em; text-transform:uppercase; }
+    .oath { margin:0; color:var(--muted); font-family:ui-serif,Georgia,serif; font-size:1.05rem; line-height:1.8; }
+    .privacy-note { margin:1.2rem 0 0; color:#64748b; font-size:.75rem; line-height:1.5; }
+    @media (max-width:760px) { main { grid-template-columns:1fr; } nav { margin-bottom:4rem; } .field { flex-direction:column; } h1 { font-size:clamp(2.8rem,15vw,4.5rem); } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav aria-label="Primary navigation">
+      <a class="brand" href="./">Infra Timelapse Explorer</a>
+      <a class="back" href="./">← Back to explorer</a>
+    </nav>
+
+    <main>
+      <section aria-labelledby="register-title">
+        <p class="eyebrow">Private preview</p>
+        <h1 id="register-title">Request access.</h1>
+        <p class="lede">Enter the email address you’ll use to sign in. We’ll send you a confirmation link before adding it to the explorer’s access list.</p>
+        <form id="register-form">
+          <label for="email">Email address</label>
+          <div class="field">
+            <input id="email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com" required>
+            <button id="submit-button" type="submit">Request access</button>
+          </div>
+          <p id="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <aside class="privacy" aria-labelledby="privacy-title">
+        <h2 id="privacy-title">An oath to privacy</h2>
+        <p class="oath">Write your privacy oath here. Explain plainly what you collect, why you collect it, how you protect it, and the promises you intend to keep.</p>
+        <p class="privacy-note">This section is intentionally ready for your own words. Edit this copy directly in <code>register.html</code>.</p>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    const form = document.getElementById("register-form");
+    const emailInput = document.getElementById("email");
+    const button = document.getElementById("submit-button");
+    const status = document.getElementById("form-status");
+    const endpoint = document.querySelector('meta[name="register-url"]').content;
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      button.disabled = true;
+      button.textContent = "Requesting…";
+      status.dataset.state = "";
+      status.textContent = "Sending your confirmation email…";
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailInput.value }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Registration failed");
+        status.dataset.state = "success";
+        status.textContent = payload.message;
+        form.reset();
+      } catch (error) {
+        status.dataset.state = "error";
+        status.textContent = error.message || "Registration is temporarily unavailable.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Request access";
+      }
+    });
+  </script>
+</body>
+</html>

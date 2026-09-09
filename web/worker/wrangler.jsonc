@@ -1,0 +1,18 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "if-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-08",
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {
+    "API_BASE_URL": "https://infra-timelapse-index-aicxsrrc2a-uw.a.run.app"
+  },
+  // Runtime secrets are configured with `wrangler secret put`; they are never
+  // stored in this file. Required secrets: ORIGIN_AUTH_TOKEN, DATABASE_URL,
+  // CLOUDFLARE_ACCESS_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
+  // ACCESS_APPLICATION_ID, ACCESS_POLICY_ID, EMAIL_SERVICE_URL,
+  // EMAIL_ORIGIN_AUTH_TOKEN, and REGISTRATION_ALLOWED_EMAIL. Configure these
+  // only on the separate auth-demo Worker, never on this production service.
+  // Browser origins are bundled from deploy/cloudflare-manifest.json.
+}
